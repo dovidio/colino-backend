@@ -11,7 +11,7 @@ Colino is privacy-focused, so we won't store any user data or tokens. Instead, t
 
 - **Lambda 1 (`auth_initiate`)**: Generates Google OAuth authorization URL
 - **Lambda 2 (`auth_callback`)**: Handles OAuth callback and exchanges authorization code for tokens
-- **Shared utilities**: Common code for configuration, token storage, and YouTube API operations
+- **Shared utilities**: Common code for configuration and HTTP response handling
 
 ## 🚀 Quick Start
 

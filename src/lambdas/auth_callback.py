@@ -7,7 +7,6 @@ import logging
 from google_auth_oauthlib.flow import Flow
 from shared.config import get_oauth_config
 from shared.response_utils import create_response, create_error_response
-from shared.token_storage import store_tokens
 
 # Configure logging
 logger = logging.getLogger()
@@ -69,17 +68,16 @@ def lambda_handler(event, context):
         # Get credentials
         credentials = flow.credentials
 
-        # Store tokens (you might want to associate with a user ID)
-        user_id = state or "default_user"  # In production, extract from state
-        success = store_tokens(user_id, credentials)
-
-        if not success:
-            return create_error_response(500, "Failed to store tokens")
-
-        # Prepare response data
+        # Prepare response data with all token information
+        # No storage - privacy first, return tokens to CLI client
         response_data = {
             "message": "Authentication successful",
             "access_token": credentials.token,
+            "refresh_token": credentials.refresh_token,
+            "token_uri": credentials.token_uri,
+            "client_id": credentials.client_id,
+            "client_secret": credentials.client_secret,
+            "scopes": credentials.scopes,
             "expires_in": 3600 if credentials.expiry else None,  # Default to 1 hour
             "scope": " ".join(credentials.scopes) if credentials.scopes else None,
         }

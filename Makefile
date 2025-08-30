@@ -17,7 +17,7 @@ lint: ## Run linting
 	poetry run mypy src/
 
 format: ## Format code
-	poetry run black src/ tests/ cli.py
+	poetry run black src/ tests/
 
 validate-template: ## Validate SAM template
 	sam validate --template template.yaml
@@ -56,22 +56,11 @@ setup-dev: install create-events ## Set up development environment
 	@echo "2. Set up Google OAuth credentials"
 	@echo "3. Run 'make local-api' to test locally"
 
-cli-help: ## Show CLI help
-	poetry run python cli.py --help
-
-cli-status: ## Check authentication status (requires user-id)
-	@read -p "Enter user ID: " user_id; \
-	poetry run python cli.py --user-id $$user_id status
-
-cli-subscriptions: ## Get user subscriptions (requires user-id)
-	@read -p "Enter user ID: " user_id; \
-	poetry run python cli.py --user-id $$user_id subscriptions
-
 # CI/CD targets
 ci-test: ## Run CI tests locally
 	PYTHONPATH=src poetry run pytest tests/ -v --cov=src --cov-report=term-missing
 	poetry run flake8 src/ tests/ --max-line-length=88 --extend-ignore=E203,W503
-	poetry run black --check src/ tests/ cli.py
+	poetry run black --check src/ tests/
 	poetry run mypy src/ --ignore-missing-imports
 
 ci-security: ## Run security scans locally

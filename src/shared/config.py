@@ -21,10 +21,6 @@ SCOPES = [
     "https://www.googleapis.com/auth/youtube.force-ssl",
 ]
 
-# AWS configuration
-AWS_REGION = os.environ.get("AWS_REGION", "us-east-1")
-DYNAMODB_TABLE_NAME = os.environ.get("DYNAMODB_TABLE_NAME", "youtube-tokens")
-
 # CORS configuration
 ALLOWED_ORIGINS = os.environ.get("ALLOWED_ORIGINS", "http://localhost:3000").split(",")
 

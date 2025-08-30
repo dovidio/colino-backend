@@ -3,12 +3,12 @@ Utility functions for creating API Gateway responses.
 """
 
 import json
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 from shared.config import ALLOWED_ORIGINS
 
 
 def create_response(
-    status_code: int, body: Dict[str, Any], headers: Dict[str, str] = None
+    status_code: int, body: Dict[str, Any], headers: Optional[Dict[str, str]] = None
 ) -> Dict[str, Any]:
     """
     Create a standardized API Gateway response.
@@ -40,7 +40,7 @@ def create_response(
     }
 
 
-def create_cors_headers(origin: str = None) -> Dict[str, str]:
+def create_cors_headers(origin: Optional[str] = None) -> Dict[str, str]:
     """
     Create CORS headers based on allowed origins.
 

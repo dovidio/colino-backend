@@ -65,9 +65,8 @@ class TestAuthInitiate:
 class TestAuthCallback:
     """Test cases for OAuth callback Lambda."""
 
-    @patch("lambdas.auth_callback.store_tokens")
     @patch("lambdas.auth_callback.Flow")
-    def test_auth_callback_success(self, mock_flow, mock_store_tokens):
+    def test_auth_callback_success(self, mock_flow):
         """Test successful OAuth callback."""
         # Mock credentials
         mock_credentials = Mock()
@@ -83,7 +82,6 @@ class TestAuthCallback:
         mock_flow_instance = Mock()
         mock_flow_instance.credentials = mock_credentials
         mock_flow.from_client_config.return_value = mock_flow_instance
-        mock_store_tokens.return_value = True
 
         # Test event with environment variable mock
         with patch.dict(os.environ, {"REDIRECT_URI": "https://example.com/callback"}):
@@ -101,7 +99,9 @@ class TestAuthCallback:
             body = json.loads(result["body"])
             assert body["message"] == "Authentication successful"
             assert body["access_token"] == "access_token_123"
-            mock_store_tokens.assert_called_once()
+            assert body["refresh_token"] == "refresh_token_123"
+            assert body["client_id"] == "client_id_123"
+            # No more token storage assertions since we're privacy-first
 
     def test_auth_callback_missing_code(self):
         """Test callback with missing authorization code."""

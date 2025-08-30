@@ -35,6 +35,32 @@ Parameters:
     Description: Comma-separated list of allowed CORS origins
 
 Resources:
+  # DynamoDB table for OAuth sessions - encrypted and short-lived
+  OAuthSessionsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "${AWS::StackName}-oauth-sessions"
+      BillingMode: PAY_PER_REQUEST
+      # Encryption at rest using AWS managed keys
+      SSESpecification:
+        SSEEnabled: true
+        SSEType: KMS
+        KMSMasterKeyId: alias/aws/dynamodb
+      # Enable TTL for automatic cleanup
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+      # Minimal schema - DynamoDB is schemaless
+      AttributeDefinitions:
+        - AttributeName: session_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: session_id
+          KeyType: HASH
+      # Enable point-in-time recovery for extra security
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+
   # Lambda function for OAuth initiation
   AuthInitiateFunction:
     Type: AWS::Serverless::Function
@@ -44,6 +70,10 @@ Resources:
       Environment:
         Variables:
           ALLOWED_ORIGINS: !Ref AllowedOrigins
+          OAUTH_SESSIONS_TABLE: !Ref OAuthSessionsTable
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref OAuthSessionsTable
       Events:
         AuthInitiate:
           Type: Api
@@ -60,11 +90,34 @@ Resources:
       Environment:
         Variables:
           ALLOWED_ORIGINS: !Ref AllowedOrigins
+          OAUTH_SESSIONS_TABLE: !Ref OAuthSessionsTable
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref OAuthSessionsTable
       Events:
         AuthCallback:
           Type: Api
           Properties:
             Path: /callback
+            Method: get
+
+  # NEW: Lambda function for polling tokens
+  AuthPollFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: package/out/lambda.zip
+      Handler: lambdas.auth_poll.lambda_handler
+      Environment:
+        Variables:
+          OAUTH_SESSIONS_TABLE: !Ref OAuthSessionsTable
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref OAuthSessionsTable
+      Events:
+        AuthPoll:
+          Type: Api
+          Properties:
+            Path: /auth/poll/{session_id}
             Method: get
 
   # Lambda function for token refresh
@@ -76,6 +129,10 @@ Resources:
       Environment:
         Variables:
           ALLOWED_ORIGINS: !Ref AllowedOrigins
+          OAUTH_SESSIONS_TABLE: !Ref OAuthSessionsTable
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref OAuthSessionsTable
       Events:
         AuthRefresh:
           Type: Api
@@ -92,6 +149,14 @@ Outputs:
     Description: "API Gateway endpoint URL for OAuth callback"
     Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/callback"
     
+  AuthPollApi:
+    Description: "API Gateway endpoint URL for token polling"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/auth/poll"
+    
   AuthRefreshApi:
     Description: "API Gateway endpoint URL for token refresh"
     Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/auth/refresh"
+  
+  OAuthSessionsTableName:
+    Description: "DynamoDB table name for OAuth sessions"
+    Value: !Ref OAuthSessionsTable

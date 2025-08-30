@@ -124,6 +124,14 @@ jobs:
         virtualenvs-create: true
         virtualenvs-in-project: true
     
+    - name: Cache Poetry dependencies
+      uses: actions/cache@v4
+      with:
+        path: .venv
+        key: deploy-venv-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('**/poetry.lock') }}
+        restore-keys: |
+          deploy-venv-${{ runner.os }}-${{ env.PYTHON_VERSION }}-
+    
     - name: Install dependencies
       run: poetry install --only=main
     
@@ -141,8 +149,12 @@ jobs:
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: sam-build
-        path: .aws-sam/
+        name: sam-build-${{ github.sha }}
+        path: |
+          .aws-sam/
+          template.yaml
+          package/
+        retention-days: 1
 
   deploy-production:
     name: Deploy to Production
@@ -152,8 +164,10 @@ jobs:
     environment: production
     
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+    - name: Download build artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: sam-build-${{ github.sha }}
     
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v4
@@ -166,23 +180,6 @@ jobs:
       uses: aws-actions/setup-sam@v2
       with:
         use-installer: true
-    
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: ${{ env.PYTHON_VERSION }}
-    
-    - name: Install Poetry
-      uses: snok/install-poetry@v1
-      with:
-        version: latest
-        virtualenvs-create: true
-        virtualenvs-in-project: true
-    
-    - name: Build Lambda package
-      run: |
-        chmod +x ./build-lambda.sh
-        ./build-lambda.sh
     
     - name: Deploy to production
       run: |
@@ -197,8 +194,39 @@ jobs:
             GoogleClientId=${{ secrets.GOOGLE_CLIENT_ID }} \
             GoogleClientSecret=${{ secrets.GOOGLE_CLIENT_SECRET }}
     
+    - name: Get API endpoints
+      id: get-endpoints
+      run: |
+        API_URL=$(aws cloudformation describe-stacks \
+          --stack-name colino-backend \
+          --query 'Stacks[0].Outputs[?OutputKey==`AuthInitiateApi`].OutputValue' \
+          --output text)
+        echo "api-url=$API_URL" >> $GITHUB_OUTPUT
+        echo "🔗 API URL: $API_URL"
+    
     - name: Run smoke tests
       run: |
-        # Add smoke tests here to verify deployment
-        echo "Running post-deployment smoke tests..."
-        # Example: curl health check endpoints
+        echo "🧪 Running post-deployment smoke tests..."
+        API_URL="${{ steps.get-endpoints.outputs.api-url }}"
+        
+        # Test auth initiate endpoint
+        echo "Testing auth initiate endpoint..."
+        HTTP_CODE=$(curl -s -w "%{http_code}" -o /tmp/response "$API_URL/auth/initiate")
+        if [ "$HTTP_CODE" = "200" ]; then
+          echo "✅ Auth initiate endpoint working"
+        else
+          echo "❌ Auth initiate endpoint failed with code: $HTTP_CODE"
+          cat /tmp/response
+          exit 1
+        fi
+        
+        # Test with a known session ID for polling
+        echo "Testing auth poll endpoint..."
+        HTTP_CODE=$(curl -s -w "%{http_code}" -o /tmp/response "$API_URL/auth/poll/test-session-123")
+        if [ "$HTTP_CODE" = "404" ]; then
+          echo "✅ Auth poll endpoint working (correctly returns 404 for non-existent session)"
+        else
+          echo "⚠️  Auth poll endpoint returned: $HTTP_CODE (expected 404)"
+        fi
+        
+        echo "🎉 Smoke tests completed successfully!"

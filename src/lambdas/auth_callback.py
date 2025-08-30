@@ -55,11 +55,15 @@ def lambda_handler(event, context):
             oauth_config, scopes=["https://www.googleapis.com/auth/youtube.readonly"]
         )
 
-        # Set redirect URI
-        redirect_uri = os.environ.get("REDIRECT_URI")
-        if not redirect_uri:
-            return create_error_response(500, "REDIRECT_URI not configured")
-
+        # Construct redirect URI dynamically from the event
+        headers = event.get("headers", {})
+        host = headers.get("Host") or headers.get("host")
+        
+        if not host:
+            return create_error_response(500, "Unable to determine API Gateway host")
+        
+        # Construct the callback URL
+        redirect_uri = f"https://{host}/Prod/callback"
         flow.redirect_uri = redirect_uri
 
         # Exchange authorization code for tokens

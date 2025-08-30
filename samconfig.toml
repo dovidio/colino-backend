@@ -3,33 +3,9 @@ version = 0.1
 [default]
 [default.global]
 [default.global.parameters]
-stack_name = "colino-backend-dev"
-s3_bucket = ""  # Will be set via environment variable
-s3_prefix = "dev"
+stack_name = "colino-backend"
+s3_bucket = ""  # Set via environment variable SAM_S3_BUCKET
+s3_prefix = "colino-backend"
 region = "us-east-1"
 capabilities = "CAPABILITY_IAM"
-parameter_overrides = [
-    "GoogleClientId=",
-    "GoogleClientSecret=",
-    "AllowedOrigins=http://localhost:3000"
-]
-
-[staging]
-[staging.global]
-[staging.global.parameters]
-stack_name = "colino-backend-staging"
-s3_bucket = ""  # Will be set via environment variable
-s3_prefix = "staging"
-region = "us-east-1"
-capabilities = "CAPABILITY_IAM"
-parameter_overrides = []  # Will be set via CI/CD
-
-[production]
-[production.global]
-[production.global.parameters]
-stack_name = "colino-backend-production"
-s3_bucket = ""  # Will be set via environment variable
-s3_prefix = "production"
-region = "us-east-1"
-capabilities = "CAPABILITY_IAM"
-parameter_overrides = []  # Will be set via CI/CD
+# Remove parameter_overrides - we'll pass them via command line

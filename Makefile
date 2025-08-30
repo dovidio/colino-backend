@@ -25,11 +25,11 @@ validate-template: ## Validate SAM template
 build: ## Build SAM application
 	sam build --template template.yaml
 
-deploy: build ## Deploy to AWS
-	sam deploy --guided
+deploy: ## Deploy to AWS (uses deploy.sh script)
+	./deploy.sh
 
-deploy-prod: build ## Deploy to production
-	sam deploy --config-env production
+deploy-guided: build ## Deploy with guided prompts (first time setup)
+	sam deploy --guided
 
 local-api: build ## Start local API for testing
 	sam local start-api --port 3001

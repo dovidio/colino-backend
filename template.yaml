@@ -10,7 +10,13 @@ Globals:
       Variables:
         GOOGLE_CLIENT_ID: !Ref GoogleClientId
         GOOGLE_CLIENT_SECRET: !Ref GoogleClientSecret
-        AWS_REGION: !Ref AWS::Region
+    Architectures:
+      - x86_64
+  Api:
+    Cors:
+      AllowMethods: "'GET,OPTIONS'"
+      AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+      AllowOrigin: "'*'"
 
 Parameters:
   GoogleClientId:
@@ -33,12 +39,10 @@ Resources:
   AuthInitiateFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: src/
+      CodeUri: package/out/lambda.zip
       Handler: lambdas.auth_initiate.lambda_handler
-      Role: !GetAtt LambdaExecutionRole.Arn
       Environment:
         Variables:
-          REDIRECT_URI: !Sub 'https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/callback'
           ALLOWED_ORIGINS: !Ref AllowedOrigins
       Events:
         AuthInitiate:
@@ -46,21 +50,15 @@ Resources:
           Properties:
             Path: /auth/initiate
             Method: get
-            Cors:
-              AllowMethods: "'GET,OPTIONS'"
-              AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
-              AllowOrigin: "'*'"
 
   # Lambda function for OAuth callback
   AuthCallbackFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: src/
+      CodeUri: package/out/lambda.zip
       Handler: lambdas.auth_callback.lambda_handler
-      Role: !GetAtt LambdaExecutionRole.Arn
       Environment:
         Variables:
-          REDIRECT_URI: !Sub 'https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/callback'
           ALLOWED_ORIGINS: !Ref AllowedOrigins
       Events:
         AuthCallback:
@@ -68,10 +66,6 @@ Resources:
           Properties:
             Path: /callback
             Method: get
-            Cors:
-              AllowMethods: "'GET,OPTIONS'"
-              AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
-              AllowOrigin: "'*'"
 
 Outputs:
   AuthInitiateApi:

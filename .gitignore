@@ -137,3 +137,6 @@ Thumbs.db
 
 # Local token storage
 /tmp/tokens/
+
+# the built lambda package
+package

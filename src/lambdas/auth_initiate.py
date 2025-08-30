@@ -28,14 +28,15 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         Dict containing authorization URL and state
     """
     try:
-        # Extract redirect URI from environment (should point to auth_callback Lambda)
-        # This should be the AWS API Gateway URL for the callback endpoint
-        redirect_uri = os.environ.get("REDIRECT_URI")
-        if not redirect_uri:
-            raise ValueError(
-                "REDIRECT_URI environment variable must be set to the "
-                "auth_callback Lambda URL"
-            )
+        # Construct redirect URI dynamically from the event
+        headers = event.get("headers", {})
+        host = headers.get("Host") or headers.get("host")
+        
+        if not host:
+            raise ValueError("Unable to determine API Gateway host")
+        
+        # Construct the callback URL
+        redirect_uri = f"https://{host}/Prod/callback"
 
         # Create OAuth flow
         flow = Flow.from_client_config(GOOGLE_CLIENT_CONFIG, scopes=SCOPES)

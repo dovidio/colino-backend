@@ -71,7 +71,7 @@ def save_oauth_tokens(
         item = {k: v for k, v in item.items() if v is not None}
 
         table.put_item(Item=item)
-        logger.info(f"Successfully saved tokens for session {session_id} with TTL {ttl}")
+        logger.info(f"Successfully saved tokens for session {session_id}")
         return True
 
     except Exception as e:

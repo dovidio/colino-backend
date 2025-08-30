@@ -4,6 +4,8 @@ OAuth callback Lambda function for handling Google OAuth authorization code exch
 
 import os
 import logging
+import json
+import datetime
 from google_auth_oauthlib.flow import Flow
 from shared.config import get_oauth_config, SCOPES
 from shared.response_utils import create_response, create_error_response
@@ -72,12 +74,38 @@ def lambda_handler(event, context):
         # Get credentials
         credentials = flow.credentials
 
+        # Get actual expiry information from Google's response
+        expires_in = None
+        expires_at = None
+        expires_timestamp = None
+        
+        if credentials.expiry:
+            expires_at = credentials.expiry
+            expires_timestamp = int(expires_at.timestamp())
+            # Calculate seconds until expiry
+            expires_in = int((expires_at - datetime.datetime.now(expires_at.tzinfo)).total_seconds())
+        else:
+            # Fallback to Google's default if expiry not provided
+            expires_in = 3600  # 1 hour in seconds
+            expires_at = datetime.datetime.now() + datetime.timedelta(seconds=expires_in)
+            expires_timestamp = int(expires_at.timestamp())
+
         # Prepare response data with essential token information only
         # Privacy-first: only return what the client actually needs
         response_data = {
             "message": "Authentication successful",
             "access_token": credentials.token,
             "refresh_token": credentials.refresh_token,
+        }
+
+        # Prepare CLI-friendly token data (without sensitive client info)
+        cli_token_data = {
+            "access_token": credentials.token,
+            "refresh_token": credentials.refresh_token,
+            "expires_in": expires_in,
+            "expires_at": expires_timestamp,
+            "token_type": "Bearer",
+            "scope": " ".join(SCOPES)
         }
 
         # Check if request accepts JSON
@@ -87,109 +115,89 @@ def lambda_handler(event, context):
         if "application/json" in accept_header:
             return create_response(200, response_data)
         else:
+            # Create warning message outside f-string to avoid backslash issues
+            refresh_token_warning = ""
+            if not credentials.refresh_token:
+                refresh_token_warning = '<div style="background: #fff3cd; padding: 15px; margin: 15px 0; border-radius: 6px; color: #856404;"><strong>WARNING:</strong> No refresh token was provided. This usually means you have authorized this app before. The access token will expire in 1 hour. To get a refresh token, <a href="https://myaccount.google.com/permissions" target="_blank">revoke previous access</a> and try again.</div>'
             # Return HTML page for browser
             html_content = f"""
             <!DOCTYPE html>
             <html>
             <head>
                 <title>Authentication Successful</title>
+                <meta charset="UTF-8">
                 <style>
                     body {{ font-family: Arial, sans-serif; text-align: center;
                            margin: 50px; }}
                     .success {{ color: green; }}
-                    .token-container {{ background: #f8f9fa; padding: 20px; margin: 20px auto;
-                                       border-radius: 8px; max-width: 600px; }}
-                    .token {{ background: #e9ecef; padding: 15px; margin: 10px 0;
-                             word-break: break-all; font-family: monospace;
-                             border-radius: 4px; }}
-                    .copy-btn {{ background: #007bff; color: white; border: none;
-                                padding: 10px 20px; margin: 5px; border-radius: 4px;
-                                cursor: pointer; font-size: 14px; }}
-                    .copy-btn:hover {{ background: #0056b3; }}
-                    .copy-btn:active {{ background: #004085; }}
-                    .instructions {{ background: #d4edda; padding: 15px; margin: 20px auto;
-                                    border-radius: 8px; max-width: 600px; color: #155724; }}
+                    .token-container {{ background: #f8f9fa; padding: 30px; margin: 20px auto;
+                                       border-radius: 12px; max-width: 500px; 
+                                       box-shadow: 0 2px 10px rgba(0,0,0,0.1); }}
+                    .copy-btn {{ background: #28a745; color: white; border: none;
+                                padding: 15px 30px; margin: 20px; border-radius: 8px;
+                                cursor: pointer; font-size: 16px; font-weight: bold;
+                                transition: all 0.3s ease; }}
+                    .copy-btn:hover {{ background: #218838; transform: translateY(-2px); }}
+                    .copy-btn:active {{ background: #1e7e34; }}
+                    .instructions {{ background: #d4edda; padding: 20px; margin: 20px auto;
+                                    border-radius: 8px; max-width: 500px; color: #155724;
+                                    border-left: 4px solid #28a745; }}
+                    .token-info {{ background: #e9ecef; padding: 15px; margin: 15px 0;
+                                  border-radius: 6px; font-family: monospace; }}
+                    .hidden-content {{ color: #6c757d; font-style: italic; }}
+                    .success-icon {{ font-size: 48px; margin-bottom: 10px; color: #28a745; }}
                 </style>
             </head>
             <body>
+                <div class="success-icon">[OK]</div>
                 <h1 class="success">Authentication Successful!</h1>
-                <p>You have successfully authorized the application to access your YouTube data.</p>
-                
-                <div class="instructions">
-                    <strong>For CLI users:</strong><br>
-                    1. Click the "Copy Access Token" button below<br>
-                    2. Go back to your terminal<br>
-                    3. Paste the token when prompted
-                </div>
-                
                 <div class="token-container">
-                    <h3>Access Token:</h3>
-                    <div class="token" id="accessToken">{credentials.token}</div>
-                    <button class="copy-btn" onclick="copyToClipboard('accessToken', this)">
-                        Copy Access Token
+                    <p>One last step: click the button below to copy your access information and paste it in the terminal where you are running Colino</p>                 
+                    <button class="copy-btn" onclick="copyTokenData()">
+                        Copy Access Information for Colino
                     </button>
                     
-                    <h3>Refresh Token:</h3>
-                    <div class="token" id="refreshToken">{credentials.refresh_token or 'None'}</div>
-                    <button class="copy-btn" onclick="copyToClipboard('refreshToken', this)">
-                        Copy Refresh Token
-                    </button>
-                    
-                    <br><br>
-                    <button class="copy-btn" onclick="copyBothTokens()" style="background: #28a745;">
-                        Copy Both Tokens (JSON)
-                    </button>
+                    {refresh_token_warning}
                 </div>
                 
-                <p>You can now close this window.</p>
+                <p style="color: #6c757d; font-size: 14px;">
+                    Your access information is hidden for security and ready to be copied when you click the button above.<br>
+                    Return to your terminal and paste this information when prompted by Colino.
+                </p>
                 
                 <script>
-                function copyToClipboard(elementId, button) {{
-                    const element = document.getElementById(elementId);
-                    const text = element.textContent;
+                const tokenData = {json.dumps(cli_token_data, indent=2)};
+                
+                function copyTokenData() {{
+                    const jsonString = JSON.stringify(tokenData, null, 2);
                     
-                    navigator.clipboard.writeText(text).then(function() {{
+                    navigator.clipboard.writeText(jsonString).then(function() {{
+                        const button = document.querySelector('.copy-btn');
                         const originalText = button.textContent;
-                        button.textContent = 'Copied!';
-                        button.style.background = '#28a745';
+                        const originalBg = button.style.backgroundColor;
+                        
+                        button.textContent = 'Copied to Clipboard!';
+                        button.style.backgroundColor = '#007bff';
+                        
                         setTimeout(function() {{
                             button.textContent = originalText;
-                            button.style.background = '#007bff';
-                        }}, 2000);
+                            button.style.backgroundColor = originalBg;
+                        }}, 3000);
                     }}).catch(function(err) {{
                         // Fallback for older browsers
                         const textarea = document.createElement('textarea');
-                        textarea.value = text;
+                        textarea.value = jsonString;
                         document.body.appendChild(textarea);
                         textarea.select();
                         document.execCommand('copy');
                         document.body.removeChild(textarea);
                         
+                        const button = document.querySelector('.copy-btn');
                         const originalText = button.textContent;
                         button.textContent = 'Copied!';
-                        button.style.background = '#28a745';
                         setTimeout(function() {{
                             button.textContent = originalText;
-                            button.style.background = '#007bff';
-                        }}, 2000);
-                    }});
-                }}
-                
-                function copyBothTokens() {{
-                    const accessToken = document.getElementById('accessToken').textContent;
-                    const refreshToken = document.getElementById('refreshToken').textContent;
-                    const json = JSON.stringify({{
-                        access_token: accessToken,
-                        refresh_token: refreshToken === 'None' ? null : refreshToken
-                    }}, null, 2);
-                    
-                    navigator.clipboard.writeText(json).then(function() {{
-                        const button = event.target;
-                        const originalText = button.textContent;
-                        button.textContent = 'Copied JSON!';
-                        setTimeout(function() {{
-                            button.textContent = originalText;
-                        }}, 2000);
+                        }}, 3000);
                     }});
                 }}
                 </script>

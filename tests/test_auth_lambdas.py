@@ -100,7 +100,11 @@ class TestAuthCallback:
             assert body["message"] == "Authentication successful"
             assert body["access_token"] == "access_token_123"
             assert body["refresh_token"] == "refresh_token_123"
-            assert body["client_id"] == "client_id_123"
+            # Only essential tokens - no extra fields
+            assert "client_id" not in body
+            assert "client_secret" not in body
+            assert "expires_in" not in body
+            assert "scopes" not in body
             # No more token storage assertions since we're privacy-first
 
     def test_auth_callback_missing_code(self):

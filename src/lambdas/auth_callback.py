@@ -68,18 +68,12 @@ def lambda_handler(event, context):
         # Get credentials
         credentials = flow.credentials
 
-        # Prepare response data with all token information
-        # No storage - privacy first, return tokens to CLI client
+        # Prepare response data with essential token information only
+        # Privacy-first: only return what the client actually needs
         response_data = {
             "message": "Authentication successful",
             "access_token": credentials.token,
             "refresh_token": credentials.refresh_token,
-            "token_uri": credentials.token_uri,
-            "client_id": credentials.client_id,
-            "client_secret": credentials.client_secret,
-            "scopes": credentials.scopes,
-            "expires_in": 3600 if credentials.expiry else None,  # Default to 1 hour
-            "scope": " ".join(credentials.scopes) if credentials.scopes else None,
         }
 
         # Check if request accepts JSON

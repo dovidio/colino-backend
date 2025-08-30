@@ -33,7 +33,6 @@ This project uses a **server-to-server OAuth flow** where your AWS Lambda functi
 4. **Google redirects to auth_callback Lambda**
    - Google calls: `https://your-api.amazonaws.com/Prod/callback?code=AUTH_CODE&state=STATE`
    - Lambda exchanges code for tokens
-   - Lambda stores tokens in DynamoDB
    - Lambda shows success page to user
 
 5. **CLI can now use stored tokens**
@@ -115,12 +114,9 @@ python cli.py --user-id your-unique-id search "python tutorials"
 - Set proper CORS origins
 
 ## 🔒 Security Considerations
-
-1. **User ID**: Use meaningful, unique user IDs (email, username, etc.)
-2. **Token Storage**: Tokens are stored in DynamoDB with user_id as key
-3. **State Parameter**: OAuth state prevents CSRF attacks
-4. **HTTPS Only**: Always use HTTPS in production
-5. **Scope Limitation**: Only request necessary YouTube scopes
+1. **State Parameter**: OAuth state prevents CSRF attacks
+2. **HTTPS Only**: Always use HTTPS in production
+3. **Scope Limitation**: Only request necessary YouTube scopes
 
 ## 🎯 Best Practices
 

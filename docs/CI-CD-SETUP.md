@@ -257,10 +257,6 @@ aws logs tail /aws/lambda/colino-backend-production-AuthCallbackFunction --follo
    - Verify redirect URIs in Google Console
    - Check client ID/secret configuration
 
-4. **DynamoDB permission errors**
-   - Ensure IAM role has DynamoDB permissions
-   - Check table name configuration
-
 ### Debug Commands
 ```bash
 # Validate SAM template

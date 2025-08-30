@@ -11,6 +11,7 @@ Colino is privacy-focused, so we won't store any user data or tokens. Instead, t
 
 - **Lambda 1 (`auth_initiate`)**: Generates Google OAuth authorization URL
 - **Lambda 2 (`auth_callback`)**: Handles OAuth callback and exchanges authorization code for tokens
+- **Lambda 3 (`auth_refresh`)**: Refreshes expired access tokens using refresh tokens
 - **Shared utilities**: Common code for configuration and HTTP response handling
 
 ## 🚀 Quick Start
@@ -45,23 +46,15 @@ make setup-dev
 This project includes a complete CI/CD pipeline using GitHub Actions for automated testing and deployment.
 
 ### Quick Setup
-1. **Configure GitHub Secrets** - See [CI/CD Setup Guide](docs/CI-CD-SETUP.md)
-2. **Push to `develop`** - Automatically deploys to staging
-3. **Push to `main`** - Automatically deploys to production
+1. **Configure GitHub Secrets** - See [GitHub Actions Setup Guide](docs/GITHUB-ACTIONS-SETUP.md)
+2. **Push to `main`** - Automatically deploys to production
 
 ### Manual Deployment
 ```bash
-# Deploy to development
-make deploy-dev
-
-# Deploy to staging
-make deploy-staging
-
-# Deploy to production
-make deploy-production
+./deploy.sh
 ```
 
-For detailed CI/CD setup instructions, see **[docs/CI-CD-SETUP.md](docs/CI-CD-SETUP.md)**
+For detailed GitHub Actions setup instructions, see **[docs/GITHUB-ACTIONS-SETUP.md](docs/GITHUB-ACTIONS-SETUP.md)**
 
 
 📖 **Detailed OAuth Flow**: See **[docs/OAUTH-FLOW.md](docs/OAUTH-FLOW.md)** for complete authentication setup and troubleshooting.
@@ -86,7 +79,6 @@ colino-backend/
 
 - `GOOGLE_CLIENT_ID`: Google OAuth client ID
 - `GOOGLE_CLIENT_SECRET`: Google OAuth client secret
-- `REDIRECT_URI`: OAuth callback URL
 - `AWS_REGION`: AWS region
 - `ALLOWED_ORIGINS`: CORS allowed origins
 

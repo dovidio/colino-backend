@@ -14,7 +14,7 @@ Globals:
       - x86_64
   Api:
     Cors:
-      AllowMethods: "'GET,OPTIONS'"
+      AllowMethods: "'GET,POST,OPTIONS'"
       AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
       AllowOrigin: "'*'"
 
@@ -67,6 +67,22 @@ Resources:
             Path: /callback
             Method: get
 
+  # Lambda function for token refresh
+  AuthRefreshFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: package/out/lambda.zip
+      Handler: lambdas.auth_refresh.lambda_handler
+      Environment:
+        Variables:
+          ALLOWED_ORIGINS: !Ref AllowedOrigins
+      Events:
+        AuthRefresh:
+          Type: Api
+          Properties:
+            Path: /auth/refresh
+            Method: post
+
 Outputs:
   AuthInitiateApi:
     Description: "API Gateway endpoint URL for OAuth initiation"
@@ -75,3 +91,7 @@ Outputs:
   AuthCallbackApi:
     Description: "API Gateway endpoint URL for OAuth callback"
     Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/callback"
+    
+  AuthRefreshApi:
+    Description: "API Gateway endpoint URL for token refresh"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/auth/refresh"

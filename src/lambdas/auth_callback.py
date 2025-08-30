@@ -99,13 +99,16 @@ def lambda_handler(event, context):
         }
 
         # Prepare CLI-friendly token data (without sensitive client info)
+        # Include refresh endpoint URL for easy token renewal
+        refresh_url = f"https://{host}/Prod/auth/refresh"
         cli_token_data = {
             "access_token": credentials.token,
             "refresh_token": credentials.refresh_token,
             "expires_in": expires_in,
             "expires_at": expires_timestamp,
             "token_type": "Bearer",
-            "scope": " ".join(SCOPES)
+            "scope": " ".join(SCOPES),
+            "refresh_url": refresh_url
         }
 
         # Check if request accepts JSON

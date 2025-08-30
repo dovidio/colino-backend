@@ -45,7 +45,7 @@ jobs:
     - name: Run linting
       run: |
         poetry run flake8 src/ tests/ --max-line-length=88 --extend-ignore=E203,W503
-        poetry run black --check src/ tests/ cli.py
+        poetry run black --check src/ tests/
     
     - name: Run type checking
       run: poetry run mypy src/ --ignore-missing-imports
@@ -127,6 +127,11 @@ jobs:
     - name: Install dependencies
       run: poetry install --only=main
     
+    - name: Build Lambda package with Poetry
+      run: |
+        chmod +x ./build-lambda.sh
+        ./build-lambda.sh
+    
     - name: Validate SAM template
       run: sam validate --template template.yaml
     
@@ -138,50 +143,6 @@ jobs:
       with:
         name: sam-build
         path: .aws-sam/
-
-  deploy-staging:
-    name: Deploy to Staging
-    runs-on: ubuntu-latest
-    needs: build
-    if: github.ref == 'refs/heads/develop'
-    environment: staging
-    
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    
-    - name: Configure AWS credentials
-      uses: aws-actions/configure-aws-credentials@v4
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ env.AWS_REGION }}
-    
-    - name: Set up AWS SAM CLI
-      uses: aws-actions/setup-sam@v2
-      with:
-        use-installer: true
-    
-    - name: Download build artifacts
-      uses: actions/download-artifact@v4
-      with:
-        name: sam-build
-        path: .aws-sam/
-    
-    - name: Deploy to staging
-      run: |
-        sam deploy \
-          --stack-name colino-backend-staging \
-          --s3-bucket ${{ secrets.SAM_S3_BUCKET }} \
-          --s3-prefix staging \
-          --region ${{ env.AWS_REGION }} \
-          --capabilities CAPABILITY_IAM \
-          --no-confirm-changeset \
-          --no-fail-on-empty-changeset \
-          --parameter-overrides \
-            GoogleClientId=${{ secrets.GOOGLE_CLIENT_ID_STAGING }} \
-            GoogleClientSecret=${{ secrets.GOOGLE_CLIENT_SECRET_STAGING }} \
-            AllowedOrigins=${{ secrets.ALLOWED_ORIGINS_STAGING }}
 
   deploy-production:
     name: Deploy to Production
@@ -206,26 +167,35 @@ jobs:
       with:
         use-installer: true
     
-    - name: Download build artifacts
-      uses: actions/download-artifact@v4
+    - name: Set up Python
+      uses: actions/setup-python@v5
       with:
-        name: sam-build
-        path: .aws-sam/
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Install Poetry
+      uses: snok/install-poetry@v1
+      with:
+        version: latest
+        virtualenvs-create: true
+        virtualenvs-in-project: true
+    
+    - name: Build Lambda package
+      run: |
+        chmod +x ./build-lambda.sh
+        ./build-lambda.sh
     
     - name: Deploy to production
       run: |
         sam deploy \
-          --stack-name colino-backend-production \
+          --stack-name colino-backend \
           --s3-bucket ${{ secrets.SAM_S3_BUCKET }} \
-          --s3-prefix production \
           --region ${{ env.AWS_REGION }} \
           --capabilities CAPABILITY_IAM \
           --no-confirm-changeset \
           --no-fail-on-empty-changeset \
           --parameter-overrides \
-            GoogleClientId=${{ secrets.GOOGLE_CLIENT_ID_PRODUCTION }} \
-            GoogleClientSecret=${{ secrets.GOOGLE_CLIENT_SECRET_PRODUCTION }} \
-            AllowedOrigins=${{ secrets.ALLOWED_ORIGINS_PRODUCTION }}
+            GoogleClientId=${{ secrets.GOOGLE_CLIENT_ID }} \
+            GoogleClientSecret=${{ secrets.GOOGLE_CLIENT_SECRET }}
     
     - name: Run smoke tests
       run: |

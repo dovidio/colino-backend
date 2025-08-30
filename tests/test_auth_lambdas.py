@@ -10,17 +10,29 @@ from unittest.mock import Mock, patch
 # Add src directory to Python path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from lambdas.auth_initiate import lambda_handler as auth_initiate_handler  # noqa: E402
-from lambdas.auth_callback import lambda_handler as auth_callback_handler  # noqa: E402
+# Mock boto3 before importing modules that use it
+with patch("boto3.resource"):
+    from lambdas.auth_initiate import (  # noqa: E402
+        lambda_handler as auth_initiate_handler,
+    )
+    from lambdas.auth_callback import (  # noqa: E402
+        lambda_handler as auth_callback_handler,
+    )
 
 
 class TestAuthInitiate:
     """Test cases for OAuth initiation Lambda."""
 
-    @patch.dict(os.environ, {"REDIRECT_URI": "https://example.com/callback"})
+    @patch.dict(os.environ, {"OAUTH_SESSIONS_TABLE": "test-table"})
+    @patch("shared.token_storage.get_dynamodb_resource")
     @patch("lambdas.auth_initiate.Flow")
-    def test_auth_initiate_success(self, mock_flow):
+    def test_auth_initiate_success(self, mock_flow, mock_dynamodb):
         """Test successful OAuth initiation."""
+        # Mock DynamoDB table response
+        mock_table = Mock()
+        mock_table.put_item.return_value = {}
+        mock_dynamodb.return_value.Table.return_value = mock_table
+
         # Mock the Flow
         mock_flow_instance = Mock()
         mock_flow_instance.authorization_url.return_value = (
@@ -30,7 +42,7 @@ class TestAuthInitiate:
         mock_flow.from_client_config.return_value = mock_flow_instance
 
         # Test event
-        event = {}
+        event = {"headers": {"Host": "api.example.com"}}
         context = Mock()
 
         # Call handler
@@ -40,8 +52,9 @@ class TestAuthInitiate:
         assert result["statusCode"] == 200
         body = json.loads(result["body"])
         assert "authorization_url" in body
-        assert "state" in body
-        assert body["state"] == "state123"
+        assert "session_id" in body  # Now returns session_id instead of state
+        # Remove the old test assertion that checks for 'state'
+        # The API now returns 'session_id' instead
 
     @patch("lambdas.auth_initiate.Flow")
     def test_auth_initiate_error(self, mock_flow):
@@ -65,9 +78,16 @@ class TestAuthInitiate:
 class TestAuthCallback:
     """Test cases for OAuth callback Lambda."""
 
+    @patch.dict(os.environ, {"OAUTH_SESSIONS_TABLE": "test-table"})
+    @patch("shared.token_storage.get_dynamodb_resource")
     @patch("lambdas.auth_callback.Flow")
-    def test_auth_callback_success(self, mock_flow):
+    def test_auth_callback_success(self, mock_flow, mock_dynamodb):
         """Test successful OAuth callback."""
+        # Mock DynamoDB table response
+        mock_table = Mock()
+        mock_table.put_item.return_value = {}
+        mock_dynamodb.return_value.Table.return_value = mock_table
+
         # Mock credentials
         mock_credentials = Mock()
         mock_credentials.token = "access_token_123"
@@ -84,28 +104,23 @@ class TestAuthCallback:
         mock_flow.from_client_config.return_value = mock_flow_instance
 
         # Test event with environment variable mock
-        with patch.dict(os.environ, {"REDIRECT_URI": "https://example.com/callback"}):
-            event = {
-                "headers": {"Accept": "application/json"},
-                "queryStringParameters": {"code": "auth_code_123", "state": "state123"},
-            }
-            context = Mock()
+        event = {
+            "headers": {"Host": "api.example.com"},
+            "queryStringParameters": {"code": "auth_code_123", "state": "state123"},
+        }
+        context = Mock()
 
-            # Call handler
-            result = auth_callback_handler(event, context)
+        # Call handler
+        result = auth_callback_handler(event, context)
 
-            # Assertions
-            assert result["statusCode"] == 200
-            body = json.loads(result["body"])
-            assert body["message"] == "Authentication successful"
-            assert body["access_token"] == "access_token_123"
-            assert body["refresh_token"] == "refresh_token_123"
-            # Only essential tokens - no extra fields
-            assert "client_id" not in body
-            assert "client_secret" not in body
-            assert "expires_in" not in body
-            assert "scopes" not in body
-            # No more token storage assertions since we're privacy-first
+        # Assertions
+        assert result["statusCode"] == 200
+        assert result["headers"]["Content-Type"] == "text/html"
+        assert "Authentication Successful!" in result["body"]
+        assert "state123" in result["body"]  # Session ID should be in HTML
+
+        # Verify DynamoDB put was called
+        mock_table.put_item.assert_called_once()
 
     def test_auth_callback_missing_code(self):
         """Test callback with missing authorization code."""

@@ -11,8 +11,16 @@ from datetime import datetime, timedelta
 
 logger = logging.getLogger()
 
-# Initialize DynamoDB client
-dynamodb = boto3.resource("dynamodb")
+# DynamoDB client will be initialized lazily
+_dynamodb = None
+
+
+def get_dynamodb_resource():
+    """Get DynamoDB resource with lazy initialization."""
+    global _dynamodb
+    if _dynamodb is None:
+        _dynamodb = boto3.resource("dynamodb")
+    return _dynamodb
 
 
 def get_oauth_sessions_table():
@@ -20,7 +28,7 @@ def get_oauth_sessions_table():
     table_name = os.environ.get("OAUTH_SESSIONS_TABLE")
     if not table_name:
         raise ValueError("OAUTH_SESSIONS_TABLE environment variable not set")
-    return dynamodb.Table(table_name)
+    return get_dynamodb_resource().Table(table_name)
 
 
 def save_oauth_tokens(

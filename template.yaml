@@ -10,9 +10,7 @@ Globals:
       Variables:
         GOOGLE_CLIENT_ID: !Ref GoogleClientId
         GOOGLE_CLIENT_SECRET: !Ref GoogleClientSecret
-        DYNAMODB_TABLE_NAME: !Ref TokenTable
         AWS_REGION: !Ref AWS::Region
-        USE_DYNAMODB: 'true'
 
 Parameters:
   GoogleClientId:
@@ -31,47 +29,6 @@ Parameters:
     Description: Comma-separated list of allowed CORS origins
 
 Resources:
-  # DynamoDB table for storing tokens
-  TokenTable:
-    Type: AWS::DynamoDB::Table
-    Properties:
-      TableName: youtube-tokens
-      AttributeDefinitions:
-        - AttributeName: user_id
-          AttributeType: S
-      KeySchema:
-        - AttributeName: user_id
-          KeyType: HASH
-      BillingMode: PAY_PER_REQUEST
-      PointInTimeRecoverySpecification:
-        PointInTimeRecoveryEnabled: true
-
-  # IAM role for Lambda functions
-  LambdaExecutionRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: lambda.amazonaws.com
-            Action: sts:AssumeRole
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
-      Policies:
-        - PolicyName: DynamoDBAccess
-          PolicyDocument:
-            Version: '2012-10-17'
-            Statement:
-              - Effect: Allow
-                Action:
-                  - dynamodb:GetItem
-                  - dynamodb:PutItem
-                  - dynamodb:UpdateItem
-                  - dynamodb:DeleteItem
-                Resource: !GetAtt TokenTable.Arn
-
   # Lambda function for OAuth initiation
   AuthInitiateFunction:
     Type: AWS::Serverless::Function
@@ -124,7 +81,3 @@ Outputs:
   AuthCallbackApi:
     Description: "API Gateway endpoint URL for OAuth callback"
     Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/callback"
-  
-  TokenTableName:
-    Description: "DynamoDB table name for token storage"
-    Value: !Ref TokenTable

@@ -63,45 +63,8 @@ make deploy-production
 
 For detailed CI/CD setup instructions, see **[docs/CI-CD-SETUP.md](docs/CI-CD-SETUP.md)**
 
-## Usage
-
-### Authentication Flow
-
-**Important**: The OAuth flow uses your AWS Lambda functions as the redirect endpoint, NOT localhost!
-
-1. **Authenticate once:**
-   ```bash
-   python cli.py --user-id your-unique-id auth --auth-url https://your-api.amazonaws.com/Prod/auth/initiate
-   ```
-
-2. **Use CLI commands:**
-   ```bash
-   # Check status
-   python cli.py --user-id your-unique-id status
-   
-   # Get subscriptions
-   python cli.py --user-id your-unique-id subscriptions
-   
-   # Search channels
-   python cli.py --user-id your-unique-id search "python tutorials"
-   ```
 
 📖 **Detailed OAuth Flow**: See **[docs/OAUTH-FLOW.md](docs/OAUTH-FLOW.md)** for complete authentication setup and troubleshooting.
-
-### Command Line Usage
-
-```python
-from src.shared.youtube_client import YouTubeClient
-
-# Initialize client with user ID
-client = YouTubeClient('user123')
-
-# Get user subscriptions
-subscriptions = client.get_subscriptions(max_results=100)
-
-# Search for channels
-channels = client.search_channels('python tutorials')
-```
 
 ## Project Structure
 
@@ -114,8 +77,6 @@ colino-backend/
 │   └── shared/
 │       ├── config.py             # Configuration settings
 │       ├── response_utils.py     # API response utilities
-│       ├── token_storage.py      # Token storage operations
-│       └── youtube_client.py     # YouTube API client
 ├── tests/
 ├── pyproject.toml
 └── README.md
@@ -126,9 +87,7 @@ colino-backend/
 - `GOOGLE_CLIENT_ID`: Google OAuth client ID
 - `GOOGLE_CLIENT_SECRET`: Google OAuth client secret
 - `REDIRECT_URI`: OAuth callback URL
-- `DYNAMODB_TABLE_NAME`: DynamoDB table for token storage
 - `AWS_REGION`: AWS region
-- `USE_DYNAMODB`: Use DynamoDB for storage (default: true)
 - `ALLOWED_ORIGINS`: CORS allowed origins
 
 ## Development
@@ -152,23 +111,11 @@ poetry run flake8 src/
 poetry run mypy src/
 ```
 
-## Deployment
-
-The Lambda functions can be deployed using various methods:
-
-- AWS SAM
-- Serverless Framework
-- AWS CDK
-- Manual deployment with ZIP files
-
-Make sure to include all dependencies in the deployment package and set appropriate IAM permissions for DynamoDB access.
-
 ## Security Considerations
 
 - Store Google client credentials securely (AWS Secrets Manager recommended)
 - Use least privilege IAM policies
 - Enable CloudTrail logging
-- Consider encrypting tokens in DynamoDB
 - Validate and sanitize all inputs
 - Implement rate limiting
 

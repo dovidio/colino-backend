@@ -8,7 +8,7 @@ import sys
 import uuid
 from typing import Dict, Any
 
-from google_auth_oauthlib.flow import Flow
+from google_auth_oauthlib.flow import Flow  # type: ignore
 
 # Add src directory to path for imports
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))

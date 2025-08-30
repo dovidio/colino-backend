@@ -3,7 +3,7 @@ DynamoDB utilities for storing and retrieving OAuth tokens.
 """
 
 import os
-import boto3
+import boto3  # type: ignore
 import json
 import time
 import logging

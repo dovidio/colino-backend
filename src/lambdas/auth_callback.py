@@ -4,10 +4,10 @@ OAuth callback Lambda function for handling Google OAuth authorization code exch
 
 import os
 import logging
-import json
 import datetime
 import uuid
-from google_auth_oauthlib.flow import Flow
+from typing import Dict, Any
+from google_auth_oauthlib.flow import Flow  # type: ignore
 from shared.config import get_oauth_config, SCOPES
 from shared.response_utils import create_response, create_error_response
 from shared.token_storage import save_oauth_tokens
@@ -17,7 +17,7 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 
-def lambda_handler(event, context):
+def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """
     Handle OAuth callback from Google.
 

@@ -4,6 +4,7 @@ OAuth polling Lambda function for retrieving stored tokens.
 
 import os
 import logging
+from typing import Dict, Any
 from shared.response_utils import create_response, create_error_response
 from shared.token_storage import get_oauth_tokens
 
@@ -12,7 +13,7 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 
-def lambda_handler(event, context):
+def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """
     Handle polling requests for OAuth tokens.
 

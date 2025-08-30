@@ -2,126 +2,273 @@
 
 ## 🔄 Understanding the OAuth Flow
 
-This project uses a **server-to-server OAuth flow** where your AWS Lambda functions handle the OAuth process, not your local machine.
+This backend provides a **server-to-server OAuth proxy** that handles Google YouTube authentication on behalf of client applications. The flow uses four main endpoints to manage the complete OAuth lifecycle.
 
-### Architecture Overview
+## 📋 API Endpoints
+
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/auth/initiate` | GET | Start OAuth flow, get authorization URL and session ID |
+| `/callback` | GET | Handle OAuth callback from Google (browser redirect) |
+| `/auth/poll/{session_id}` | GET | Poll for authentication status and retrieve tokens |
+| `/auth/refresh` | POST | Refresh expired access tokens |
+
+## 🏗️ Architecture Overview
 
 ```
 ┌─────────────┐    ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   CLI App   │    │  AWS Lambda     │    │     Google      │    │  AWS Lambda     │
-│ (Your Local │────│ auth_initiate   │────│   OAuth Server  │────│ auth_callback   │
-│  Machine)   │    │                 │    │                 │    │                 │
+│   Client    │    │  OAuth Proxy    │    │     Google      │    │   DynamoDB      │
+│ Application │    │   (Lambda)      │    │ OAuth Server    │    │   Sessions      │
 └─────────────┘    └─────────────────┘    └─────────────────┘    └─────────────────┘
+       │                     │                       │                     │
+       │                     │                       │                     │
 ```
 
-### Step-by-Step Flow
+## 🔄 Complete OAuth Flow
 
-1. **CLI calls auth_initiate Lambda**
-   ```bash
-   python cli.py --user-id user123 auth --auth-url https://your-api.amazonaws.com/Prod/auth/initiate
-   ```
-
-2. **Lambda returns Google authorization URL**
-   - URL points to Google OAuth server
-   - Redirect URI points back to your `auth_callback` Lambda (NOT localhost!)
-   - Example: `https://accounts.google.com/oauth2/auth?client_id=...&redirect_uri=https://your-api.amazonaws.com/Prod/callback`
-
-3. **CLI opens browser with authorization URL**
-   - User sees Google consent screen
-   - User grants permissions for YouTube access
-
-4. **Google redirects to auth_callback Lambda**
-   - Google calls: `https://your-api.amazonaws.com/Prod/callback?code=AUTH_CODE&state=STATE`
-   - Lambda exchanges code for tokens
-   - Lambda shows success page to user
-
-5. **CLI can now use stored tokens**
-   ```bash
-   python cli.py --user-id user123 subscriptions
-   ```
-
-## 🔧 Configuration
-
-### Environment Variables
-
-The `REDIRECT_URI` environment variable must be set to your auth_callback Lambda URL:
-
-```bash
-# For staging
-REDIRECT_URI=https://your-staging-api.execute-api.us-east-1.amazonaws.com/Prod/callback
-
-# For production  
-REDIRECT_URI=https://your-production-api.execute-api.us-east-1.amazonaws.com/Prod/callback
+### Step 1: Initiate Authentication
+```
+Client Application → auth/initiate
 ```
 
-### Google Cloud Console Setup
-
-In your Google Cloud Console OAuth configuration, add these authorized redirect URIs:
-
-- `https://your-staging-api.execute-api.us-east-1.amazonaws.com/Prod/callback`
-- `https://your-production-api.execute-api.us-east-1.amazonaws.com/Prod/callback`
-
-**Important**: Do NOT use `localhost` URLs in production!
-
-## 🖥️ CLI Usage
-
-### 1. Authenticate (One-time setup)
-
-```bash
-# Get your auth_initiate URL from AWS CloudFormation outputs
-python cli.py --user-id your-unique-id auth --auth-url https://your-api.amazonaws.com/Prod/auth/initiate
+**Request:**
+```http
+GET /auth/initiate
 ```
 
-### 2. Use CLI commands
-
-```bash
-# Check authentication status
-python cli.py --user-id your-unique-id status
-
-# Get subscriptions
-python cli.py --user-id your-unique-id subscriptions
-
-# Search channels
-python cli.py --user-id your-unique-id search "python tutorials"
+**Response:**
+```json
+{
+  "authorization_url": "https://accounts.google.com/oauth2/auth?client_id=...",
+  "session_id": "dd589ff7-e46b-42ed-a338-ebe59116075d"
+}
 ```
 
-## 🔍 Troubleshooting
+**What happens:**
+- Lambda generates Google OAuth authorization URL
+- Creates session entry in DynamoDB with status "pending"
+- Returns authorization URL and unique session ID
 
-### Common Issues
+### Step 2: User Authentication (Browser)
+```
+Client opens authorization_url → Google OAuth → callback
+```
 
-1. **"redirect_uri_mismatch" error**
-   - Check that REDIRECT_URI environment variable matches Google Console settings
-   - Ensure URLs use HTTPS (except for localhost development)
+**Flow:**
+1. Client opens the `authorization_url` in a browser
+2. User completes Google OAuth consent flow
+3. Google redirects to `/callback` with authorization code
+4. Callback Lambda exchanges code for tokens
+5. Tokens are saved to DynamoDB with session ID
 
-2. **"REDIRECT_URI environment variable must be set"**
-   - Set the REDIRECT_URI environment variable in your Lambda function
-   - This should point to your auth_callback Lambda, not localhost
+**User sees:**
+- Google OAuth consent screen
+- After completion: "Authentication successful" page with session ID
 
-3. **"No tokens found for user"**
-   - Run the auth command first
-   - Check that the user_id is consistent between auth and CLI commands
+### Step 3: Poll for Tokens
+```
+Client Application → auth/poll/{session_id}
+```
 
-### Development vs Production
+**Request:**
+```http
+GET /auth/poll/dd589ff7-e46b-42ed-a338-ebe59116075d
+```
 
-#### Development (Local Testing)
-- You can use `sam local start-api` for local testing
-- Set `REDIRECT_URI=http://localhost:3000/callback` for local development
-- Add `http://localhost:3000/callback` to Google Console for development
+**Possible Responses:**
 
-#### Production (AWS Deployment)
-- Use actual AWS API Gateway URLs
-- Always use HTTPS URLs
-- Set proper CORS origins
+**3a. Pending (202):**
+```json
+{
+  "status": "pending",
+  "message": "Authentication in progress. Please complete the OAuth flow in your browser."
+}
+```
 
-## 🔒 Security Considerations
-1. **State Parameter**: OAuth state prevents CSRF attacks
-2. **HTTPS Only**: Always use HTTPS in production
-3. **Scope Limitation**: Only request necessary YouTube scopes
+**3b. Success (200):**
+```json
+{
+  "status": "completed",
+  "access_token": "ya29.a0AfH6SMBq...",
+  "refresh_token": "1//04vF_Zm8jNs_JCgYIARAAGAQSNwF...",
+  "expires_in": 3599,
+  "token_type": "Bearer",
+  "scope": "https://www.googleapis.com/auth/youtube.readonly"
+}
+```
+
+**3c. Not Found (404):**
+```json
+{
+  "error": "Session not found"
+}
+```
+
+### Step 4: Token Refresh (When Needed)
+```
+Client Application → auth/refresh
+```
+
+**Request:**
+```http
+POST /auth/refresh
+Content-Type: application/json
+
+{
+  "refresh_token": "1//04vF_Zm8jNs_JCgYIARAAGAQSNwF..."
+}
+```
+
+**Response:**
+```json
+{
+  "access_token": "ya29.a0AfH6SMBq_NEW_TOKEN...",
+  "expires_in": 3599,
+  "token_type": "Bearer",
+  "scope": "https://www.googleapis.com/auth/youtube.readonly"
+}
+```
+
+## 📊 Flow Diagram
+
+```
+┌─────────────┐
+│   Client    │
+│ Application │
+└──────┬──────┘
+       │
+       │ 1. GET /auth/initiate
+       ▼
+┌─────────────────┐
+│ auth_initiate   │────────┐
+│    Lambda       │        │ Save session
+└─────────┬───────┘        ▼
+          │           ┌─────────────────┐
+          │           │   DynamoDB      │
+          │           │   Sessions      │
+          ▼           └─────────────────┘
+┌─────────────────┐
+│ authorization_url│
+│   + session_id  │
+└─────────┬───────┘
+          │
+          │ 2. User opens URL in browser
+          ▼
+┌─────────────────┐        ┌─────────────────┐
+│     Google      │        │ auth_callback   │
+│ OAuth Server    │───────▶│    Lambda       │
+└─────────────────┘        └─────────┬───────┘
+                                     │
+                                     │ Save tokens
+                                     ▼
+                               ┌─────────────────┐
+                               │   DynamoDB      │
+                               │   Sessions      │
+                               └─────────────────┘
+                                     ▲
+          ┌─────────────────┐        │
+          │   Client        │        │
+          │ Polling Loop    │────────┘ 3. GET /auth/poll/{session_id}
+          └─────────┬───────┘
+                    │
+                    │ 4. Use tokens for API calls
+                    ▼
+          ┌─────────────────┐
+          │    YouTube      │
+          │      API        │
+          └─────────────────┘
+                    │
+                    │ When token expires
+                    ▼
+          ┌─────────────────┐
+          │ auth_refresh    │
+          │    Lambda       │
+          └─────────────────┘
+```
+
+## 🔄 Session Lifecycle
+
+1. **Created**: Session entry created with status "pending"
+2. **Pending**: Waiting for user to complete OAuth in browser  
+3. **Completed**: Tokens available for retrieval via polling
+4. **Expired**: Session expires after tokens are retrieved (optional cleanup)
+
+## 🕐 Polling Strategy
+
+**Recommended client polling pattern:**
+```
+1. Call /auth/initiate
+2. Open authorization_url in browser
+3. Poll /auth/poll/{session_id} every 2-3 seconds
+4. Stop polling when status != "pending"
+5. Use tokens for API calls
+6. Refresh tokens when they expire using /auth/refresh
+```
+
+## � Security Features
+
+- **Session Isolation**: Each authentication flow gets unique session ID
+- **Temporary Storage**: Tokens stored only during OAuth flow
+- **CORS Support**: Browser-friendly for client applications
+- **HTTPS Only**: All endpoints require secure connections
+- **Token Expiration**: Access tokens have limited lifetime, refresh tokens for renewal
+
+## 📝 Example Client Implementation
+
+```javascript
+async function authenticate() {
+  // 1. Start OAuth flow
+  const { authorization_url, session_id } = await fetch('/auth/initiate').then(r => r.json());
+  
+  // 2. Open browser for user authentication
+  window.open(authorization_url);
+  
+  // 3. Poll for completion
+  while (true) {
+    const response = await fetch(`/auth/poll/${session_id}`);
+    
+    if (response.status === 200) {
+      const tokens = await response.json();
+      // Store tokens securely
+      localStorage.setItem('access_token', tokens.access_token);
+      localStorage.setItem('refresh_token', tokens.refresh_token);
+      break;
+    } else if (response.status === 202) {
+      // Still pending, wait and try again
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    } else {
+      throw new Error('Authentication failed');
+    }
+  }
+}
+
+async function refreshToken() {
+  const refresh_token = localStorage.getItem('refresh_token');
+  const response = await fetch('/auth/refresh', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ refresh_token })
+  });
+  
+  const { access_token } = await response.json();
+  localStorage.setItem('access_token', access_token);
+}
+```
+
+## 🚨 Error Handling
+
+| Status | Meaning | Action |
+|--------|---------|--------|
+| 200 | Success | Use returned data |
+| 202 | Pending | Continue polling |
+| 400 | Bad Request | Check request format |
+| 404 | Not Found | Invalid session ID |
+| 500 | Server Error | Retry or contact support |
 
 ## 🎯 Best Practices
 
-1. **Consistent User IDs**: Use the same user_id for auth and CLI commands
-2. **Token Expiry**: Check token expiry and handle refresh tokens
-3. **Error Handling**: Always check command return codes
-4. **Secure Storage**: Consider encrypting tokens in DynamoDB
-5. **Logging**: Monitor CloudWatch logs for authentication issues
+1. **Implement exponential backoff** for polling to avoid rate limits
+2. **Store refresh tokens securely** (not in localStorage for production)
+3. **Handle token expiration gracefully** with automatic refresh
+4. **Validate all responses** before using tokens
+5. **Implement proper error handling** for all endpoints

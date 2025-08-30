@@ -107,8 +107,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         # Generate a unique session ID if state is not provided
         session_id = state if state else str(uuid.uuid4())
 
-        # Save tokens to DynamoDB
-        success = save_oauth_tokens(session_id, token_data, expires_in)
+        success = save_oauth_tokens(session_id, token_data)
 
         if not success:
             logger.error(f"Failed to save tokens for session {session_id}")

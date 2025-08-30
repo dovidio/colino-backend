@@ -7,7 +7,6 @@ import boto3  # type: ignore
 import time
 import logging
 from typing import Dict, Any, Optional
-from datetime import datetime, timedelta
 
 logger = logging.getLogger()
 
@@ -32,7 +31,7 @@ def get_oauth_sessions_table():
 
 
 def save_oauth_tokens(
-    session_id: str, tokens: Dict[str, Any], expires_in: int = 3600
+    session_id: str, tokens: Dict[str, Any], expires_in: int = 600
 ) -> bool:
     """
     Save OAuth tokens to DynamoDB.
@@ -40,7 +39,7 @@ def save_oauth_tokens(
     Args:
         session_id: Unique session identifier
         tokens: Dictionary containing token information
-        expires_in: Token expiration time in seconds (default 1 hour)
+        expires_in: Session expiration time in seconds (default 10 minutes)
 
     Returns:
         bool: True if successful, False otherwise
@@ -48,8 +47,11 @@ def save_oauth_tokens(
     try:
         table = get_oauth_sessions_table()
 
-        # Calculate TTL for automatic cleanup (1 day from now)
-        ttl = int((datetime.now() + timedelta(days=1)).timestamp())
+        # Calculate TTL based on the provided expires_in parameter
+        # This allows different TTL values for different use cases:
+        # - Pending sessions: short TTL (15-30 minutes)
+        # - Completed sessions: longer TTL (1-2 hours) or immediate cleanup
+        ttl = int(time.time() + expires_in)
 
         # Prepare item for DynamoDB
         item = {
@@ -60,6 +62,7 @@ def save_oauth_tokens(
             "expires_in": expires_in,
             "expires_at": tokens.get("expires_at"),
             "scope": tokens.get("scope"),
+            "status": tokens.get("status", "completed"),
             "created_at": int(time.time()),
             "ttl": ttl,
         }
@@ -68,7 +71,7 @@ def save_oauth_tokens(
         item = {k: v for k, v in item.items() if v is not None}
 
         table.put_item(Item=item)
-        logger.info(f"Successfully saved tokens for session {session_id}")
+        logger.info(f"Successfully saved tokens for session {session_id} with TTL {ttl}")
         return True
 
     except Exception as e:

@@ -61,8 +61,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             "created_at": None,  # Will be set by save_oauth_tokens
         }
 
-        # Save placeholder with a longer TTL (1 hour for the OAuth flow to complete)
-        save_oauth_tokens(session_id, placeholder_data, expires_in=3600)
+        save_oauth_tokens(session_id, placeholder_data)
 
         response_data = {
             "authorization_url": authorization_url,

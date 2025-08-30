@@ -1,0 +1,183 @@
+name: Pull Request Checks
+
+on:
+  pull_request:
+    branches: [ main, develop ]
+
+env:
+  PYTHON_VERSION: '3.9'
+
+jobs:
+  changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      src: ${{ steps.changes.outputs.src }}
+      tests: ${{ steps.changes.outputs.tests }}
+      workflows: ${{ steps.changes.outputs.workflows }}
+    steps:
+    - uses: actions/checkout@v4
+    - uses: dorny/paths-filter@v3
+      id: changes
+      with:
+        filters: |
+          src:
+            - 'src/**'
+            - 'pyproject.toml'
+            - 'poetry.lock'
+          tests:
+            - 'tests/**'
+          workflows:
+            - '.github/workflows/**'
+
+  lint-and-test:
+    name: Lint and Test
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.src == 'true' || needs.changes.outputs.tests == 'true'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Install Poetry
+      uses: snok/install-poetry@v1
+      with:
+        version: latest
+        virtualenvs-create: true
+        virtualenvs-in-project: true
+    
+    - name: Cache dependencies
+      uses: actions/cache@v4
+      with:
+        path: .venv
+        key: venv-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('**/poetry.lock') }}
+        restore-keys: |
+          venv-${{ runner.os }}-${{ env.PYTHON_VERSION }}-
+    
+    - name: Install dependencies
+      run: poetry install
+    
+    - name: Check code formatting
+      run: poetry run black --check src/ tests/ cli.py
+    
+    - name: Run linting
+      run: poetry run flake8 src/ tests/ --max-line-length=88 --extend-ignore=E203,W503
+    
+    - name: Run type checking
+      run: poetry run mypy src/ --ignore-missing-imports
+    
+    - name: Run tests with coverage
+      run: poetry run pytest tests/ -v --cov=src --cov-report=xml --cov-report=term-missing
+    
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        file: ./coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false
+
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.src == 'true'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Install Poetry
+      uses: snok/install-poetry@v1
+      with:
+        version: latest
+        virtualenvs-create: true
+        virtualenvs-in-project: true
+    
+    - name: Install dependencies
+      run: poetry install
+    
+    - name: Run security scan
+      run: |
+        poetry add --group dev bandit safety
+        poetry run bandit -r src/ -ll
+        poetry run safety check
+
+  validate-sam:
+    name: Validate SAM Template
+    runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.src == 'true' || needs.changes.outputs.workflows == 'true'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up AWS SAM CLI
+      uses: aws-actions/setup-sam@v2
+      with:
+        use-installer: true
+    
+    - name: Validate SAM template
+      run: sam validate --template template.yaml
+    
+    - name: Build SAM application (dry run)
+      run: sam build --template template.yaml
+
+  pr-summary:
+    name: PR Summary
+    runs-on: ubuntu-latest
+    needs: [changes, lint-and-test, security, validate-sam]
+    if: always()
+    
+    steps:
+    - name: Create PR Summary
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const results = {
+            changes: '${{ needs.changes.result }}',
+            lintAndTest: '${{ needs.lint-and-test.result }}',
+            security: '${{ needs.security.result }}',
+            validateSam: '${{ needs.validate-sam.result }}'
+          };
+          
+          let summary = '## 🔍 Pull Request Check Results\n\n';
+          
+          if (results.changes === 'success') {
+            const srcChanged = '${{ needs.changes.outputs.src }}' === 'true';
+            const testsChanged = '${{ needs.changes.outputs.tests }}' === 'true';
+            const workflowsChanged = '${{ needs.changes.outputs.workflows }}' === 'true';
+            
+            summary += '### 📁 Changed Files\n';
+            if (srcChanged) summary += '- ✅ Source code files\n';
+            if (testsChanged) summary += '- ✅ Test files\n';
+            if (workflowsChanged) summary += '- ✅ Workflow files\n';
+            summary += '\n';
+          }
+          
+          summary += '### 🧪 Check Results\n';
+          summary += `- **Lint & Test**: ${results.lintAndTest === 'success' ? '✅' : results.lintAndTest === 'failure' ? '❌' : '⏭️'}\n`;
+          summary += `- **Security Scan**: ${results.security === 'success' ? '✅' : results.security === 'failure' ? '❌' : '⏭️'}\n`;
+          summary += `- **SAM Validation**: ${results.validateSam === 'success' ? '✅' : results.validateSam === 'failure' ? '❌' : '⏭️'}\n`;
+          
+          const hasFailures = Object.values(results).includes('failure');
+          
+          if (hasFailures) {
+            summary += '\n❌ **Some checks failed.** Please review the failed jobs and fix any issues before merging.\n';
+          } else {
+            summary += '\n✅ **All checks passed!** This PR is ready for review.\n';
+          }
+          
+          console.log(summary);

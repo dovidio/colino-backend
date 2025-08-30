@@ -1,0 +1,130 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: 'YouTube OAuth Proxy Lambda Functions'
+
+Globals:
+  Function:
+    Timeout: 30
+    Runtime: python3.9
+    Environment:
+      Variables:
+        GOOGLE_CLIENT_ID: !Ref GoogleClientId
+        GOOGLE_CLIENT_SECRET: !Ref GoogleClientSecret
+        DYNAMODB_TABLE_NAME: !Ref TokenTable
+        AWS_REGION: !Ref AWS::Region
+        USE_DYNAMODB: 'true'
+
+Parameters:
+  GoogleClientId:
+    Type: String
+    Description: Google OAuth Client ID
+    NoEcho: true
+  
+  GoogleClientSecret:
+    Type: String
+    Description: Google OAuth Client Secret
+    NoEcho: true
+  
+  AllowedOrigins:
+    Type: String
+    Default: 'http://localhost:3000'
+    Description: Comma-separated list of allowed CORS origins
+
+Resources:
+  # DynamoDB table for storing tokens
+  TokenTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: youtube-tokens
+      AttributeDefinitions:
+        - AttributeName: user_id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: user_id
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+
+  # IAM role for Lambda functions
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: DynamoDBAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                  - dynamodb:UpdateItem
+                  - dynamodb:DeleteItem
+                Resource: !GetAtt TokenTable.Arn
+
+  # Lambda function for OAuth initiation
+  AuthInitiateFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: lambdas.auth_initiate.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Environment:
+        Variables:
+          REDIRECT_URI: !Sub 'https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/callback'
+          ALLOWED_ORIGINS: !Ref AllowedOrigins
+      Events:
+        AuthInitiate:
+          Type: Api
+          Properties:
+            Path: /auth/initiate
+            Method: get
+            Cors:
+              AllowMethods: "'GET,OPTIONS'"
+              AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+              AllowOrigin: "'*'"
+
+  # Lambda function for OAuth callback
+  AuthCallbackFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/
+      Handler: lambdas.auth_callback.lambda_handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Environment:
+        Variables:
+          REDIRECT_URI: !Sub 'https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/callback'
+          ALLOWED_ORIGINS: !Ref AllowedOrigins
+      Events:
+        AuthCallback:
+          Type: Api
+          Properties:
+            Path: /callback
+            Method: get
+            Cors:
+              AllowMethods: "'GET,OPTIONS'"
+              AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+              AllowOrigin: "'*'"
+
+Outputs:
+  AuthInitiateApi:
+    Description: "API Gateway endpoint URL for OAuth initiation"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/auth/initiate"
+  
+  AuthCallbackApi:
+    Description: "API Gateway endpoint URL for OAuth callback"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/callback"
+  
+  TokenTableName:
+    Description: "DynamoDB table name for token storage"
+    Value: !Ref TokenTable

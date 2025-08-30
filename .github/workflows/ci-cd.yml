@@ -1,0 +1,234 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  AWS_REGION: us-east-1
+  PYTHON_VERSION: '3.9'
+
+jobs:
+  test:
+    name: Test and Lint
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Install Poetry
+      uses: snok/install-poetry@v1
+      with:
+        version: latest
+        virtualenvs-create: true
+        virtualenvs-in-project: true
+    
+    - name: Cache dependencies
+      uses: actions/cache@v4
+      with:
+        path: .venv
+        key: venv-${{ runner.os }}-${{ env.PYTHON_VERSION }}-${{ hashFiles('**/poetry.lock') }}
+        restore-keys: |
+          venv-${{ runner.os }}-${{ env.PYTHON_VERSION }}-
+    
+    - name: Install dependencies
+      run: poetry install
+    
+    - name: Run linting
+      run: |
+        poetry run flake8 src/ tests/ --max-line-length=88 --extend-ignore=E203,W503
+        poetry run black --check src/ tests/ cli.py
+    
+    - name: Run type checking
+      run: poetry run mypy src/ --ignore-missing-imports
+    
+    - name: Run tests
+      run: poetry run pytest tests/ -v --cov=src --cov-report=xml
+    
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        file: ./coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false
+
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Install Poetry
+      uses: snok/install-poetry@v1
+      with:
+        version: latest
+        virtualenvs-create: true
+        virtualenvs-in-project: true
+    
+    - name: Install dependencies
+      run: poetry install
+    
+    - name: Run security scan
+      run: |
+        poetry add --group dev bandit safety
+        poetry run bandit -r src/ -f json -o bandit-report.json || true
+        poetry run safety check --json --output safety-report.json || true
+    
+    - name: Upload security reports
+      uses: actions/upload-artifact@v4
+      with:
+        name: security-reports
+        path: |
+          bandit-report.json
+          safety-report.json
+
+  build:
+    name: Build SAM Application
+    runs-on: ubuntu-latest
+    needs: [test, security]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: Set up AWS SAM CLI
+      uses: aws-actions/setup-sam@v2
+      with:
+        use-installer: true
+    
+    - name: Install Poetry
+      uses: snok/install-poetry@v1
+      with:
+        version: latest
+        virtualenvs-create: true
+        virtualenvs-in-project: true
+    
+    - name: Install dependencies
+      run: poetry install --only=main
+    
+    - name: Validate SAM template
+      run: sam validate --template template.yaml
+    
+    - name: Build SAM application
+      run: sam build --template template.yaml
+    
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: sam-build
+        path: .aws-sam/
+
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/develop'
+    environment: staging
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+    
+    - name: Set up AWS SAM CLI
+      uses: aws-actions/setup-sam@v2
+      with:
+        use-installer: true
+    
+    - name: Download build artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: sam-build
+        path: .aws-sam/
+    
+    - name: Deploy to staging
+      run: |
+        sam deploy \
+          --stack-name colino-backend-staging \
+          --s3-bucket ${{ secrets.SAM_S3_BUCKET }} \
+          --s3-prefix staging \
+          --region ${{ env.AWS_REGION }} \
+          --capabilities CAPABILITY_IAM \
+          --no-confirm-changeset \
+          --no-fail-on-empty-changeset \
+          --parameter-overrides \
+            GoogleClientId=${{ secrets.GOOGLE_CLIENT_ID_STAGING }} \
+            GoogleClientSecret=${{ secrets.GOOGLE_CLIENT_SECRET_STAGING }} \
+            AllowedOrigins=${{ secrets.ALLOWED_ORIGINS_STAGING }}
+
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    environment: production
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+    
+    - name: Set up AWS SAM CLI
+      uses: aws-actions/setup-sam@v2
+      with:
+        use-installer: true
+    
+    - name: Download build artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: sam-build
+        path: .aws-sam/
+    
+    - name: Deploy to production
+      run: |
+        sam deploy \
+          --stack-name colino-backend-production \
+          --s3-bucket ${{ secrets.SAM_S3_BUCKET }} \
+          --s3-prefix production \
+          --region ${{ env.AWS_REGION }} \
+          --capabilities CAPABILITY_IAM \
+          --no-confirm-changeset \
+          --no-fail-on-empty-changeset \
+          --parameter-overrides \
+            GoogleClientId=${{ secrets.GOOGLE_CLIENT_ID_PRODUCTION }} \
+            GoogleClientSecret=${{ secrets.GOOGLE_CLIENT_SECRET_PRODUCTION }} \
+            AllowedOrigins=${{ secrets.ALLOWED_ORIGINS_PRODUCTION }}
+    
+    - name: Run smoke tests
+      run: |
+        # Add smoke tests here to verify deployment
+        echo "Running post-deployment smoke tests..."
+        # Example: curl health check endpoints

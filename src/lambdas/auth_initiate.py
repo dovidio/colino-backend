@@ -44,7 +44,9 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
         # Generate authorization URL
         authorization_url, state = flow.authorization_url(
-            access_type="offline", include_granted_scopes="true"
+            access_type="offline", 
+            include_granted_scopes="true",
+            prompt="consent"  # Force consent screen to get refresh token
         )
 
         response_data = {

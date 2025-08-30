@@ -33,10 +33,10 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         # Construct redirect URI dynamically from the event
         headers = event.get("headers", {})
         host = headers.get("Host") or headers.get("host")
-        
+
         if not host:
             raise ValueError("Unable to determine API Gateway host")
-        
+
         # Construct the callback URL
         redirect_uri = f"https://{host}/Prod/callback"
 
@@ -49,10 +49,10 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
         # Generate authorization URL using session_id as state
         authorization_url, _ = flow.authorization_url(
-            access_type="offline", 
+            access_type="offline",
             include_granted_scopes="true",
             prompt="consent",  # Force consent screen to get refresh token
-            state=session_id  # Use our session_id as the state parameter
+            state=session_id,  # Use our session_id as the state parameter
         )
 
         # Save a placeholder record in DynamoDB so polling can start immediately
@@ -60,7 +60,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             "status": "pending",
             "created_at": None,  # Will be set by save_oauth_tokens
         }
-        
+
         # Save placeholder with a longer TTL (1 hour for the OAuth flow to complete)
         save_oauth_tokens(session_id, placeholder_data, expires_in=3600)
 

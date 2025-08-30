@@ -1,15 +1,15 @@
 """
-OAuth callback Lambda function for handling Google OAuth authorization code exchange.
+OAuth callback Lambda function for handling Google OAuth authorization code
+exchange.
 """
 
-import os
 import logging
 import datetime
 import uuid
 from typing import Dict, Any
 from google_auth_oauthlib.flow import Flow  # type: ignore
 from shared.config import get_oauth_config, SCOPES
-from shared.response_utils import create_response, create_error_response
+from shared.response_utils import create_error_response
 from shared.token_storage import save_oauth_tokens
 
 # Configure logging
@@ -55,17 +55,15 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         oauth_config = get_oauth_config()
 
         # Create flow instance
-        flow = Flow.from_client_config(
-            oauth_config, scopes=SCOPES
-        )
+        flow = Flow.from_client_config(oauth_config, scopes=SCOPES)
 
         # Construct redirect URI dynamically from the event
         headers = event.get("headers", {})
         host = headers.get("Host") or headers.get("host")
-        
+
         if not host:
             return create_error_response(500, "Unable to determine API Gateway host")
-        
+
         # Construct the callback URL
         redirect_uri = f"https://{host}/Prod/callback"
         flow.redirect_uri = redirect_uri
@@ -80,16 +78,20 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         expires_in = None
         expires_at = None
         expires_timestamp = None
-        
+
         if credentials.expiry:
             expires_at = credentials.expiry
             expires_timestamp = int(expires_at.timestamp())
             # Calculate seconds until expiry
-            expires_in = int((expires_at - datetime.datetime.now(expires_at.tzinfo)).total_seconds())
+            expires_in = int(
+                (expires_at - datetime.datetime.now(expires_at.tzinfo)).total_seconds()
+            )
         else:
             # Fallback to Google's default if expiry not provided
             expires_in = 3600  # 1 hour in seconds
-            expires_at = datetime.datetime.now() + datetime.timedelta(seconds=expires_in)
+            expires_at = datetime.datetime.now() + datetime.timedelta(
+                seconds=expires_in
+            )
             expires_timestamp = int(expires_at.timestamp())
 
         # Prepare token data for storage
@@ -99,7 +101,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             "token_type": "Bearer",
             "expires_in": expires_in,
             "expires_at": expires_timestamp,
-            "scope": " ".join(SCOPES)
+            "scope": " ".join(SCOPES),
         }
 
         # Generate a unique session ID if state is not provided
@@ -107,13 +109,13 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
 
         # Save tokens to DynamoDB
         success = save_oauth_tokens(session_id, token_data, expires_in)
-        
+
         if not success:
             logger.error(f"Failed to save tokens for session {session_id}")
             return create_error_response(500, "Failed to save authentication data")
 
         logger.info(f"Successfully processed OAuth callback for session {session_id}")
-        
+
         # Return HTML page with instructions to keep CLI running
         html_content = f"""
         <!DOCTYPE html>
@@ -124,7 +126,8 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <style>
                 body {{
-                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
+                                 Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
                     text-align: center;
                     margin: 0;
                     padding: 50px 20px;
@@ -190,31 +193,38 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             <div class="container">
                 <div class="success-icon">✅</div>
                 <h1>Authentication Successful!</h1>
-                <p>Your OAuth authentication has been completed successfully and your tokens have been securely stored.</p>
-                
+                <p>
+                    Your OAuth authentication has been completed successfully
+                    and your tokens have been securely stored.
+                </p>
+
                 <div class="important-instruction">
-                    <strong>⚠️ Important:</strong> Please make sure your CLI command is still running in the terminal before closing this browser window. The CLI needs a few seconds to retrieve your authentication tokens.
+                    <strong>⚠️ Important:</strong> Please make sure your CLI
+                    command is still running in the terminal before closing
+                    this browser window. The CLI needs a few seconds to
+                    retrieve your authentication tokens.
                 </div>
 
-                <div class="session-info">
-                    Session ID: {session_id}
-                </div>
-                
+                <div class="session-info">Session ID: {session_id}</div>
+
                 <div class="close-instruction">
-                    <strong>After your CLI confirms successful authentication, you can safely close this browser window.</strong>
+                    <strong>
+                        After your CLI confirms successful authentication,
+                        you can safely close this browser window.
+                    </strong>
                 </div>
             </div>
         </body>
         </html>
         """
-        
+
         return {
             "statusCode": 200,
             "headers": {
                 "Content-Type": "text/html",
                 "Access-Control-Allow-Origin": "*",
             },
-            "body": html_content
+            "body": html_content,
         }
 
     except Exception as e:

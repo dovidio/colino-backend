@@ -2,7 +2,6 @@
 OAuth token refresh Lambda function for refreshing Google OAuth access tokens.
 """
 
-import os
 import logging
 import json
 import datetime
@@ -55,31 +54,35 @@ def lambda_handler(event, context):
             "client_id": client_id,
             "client_secret": client_secret,
             "refresh_token": refresh_token,
-            "grant_type": "refresh_token"
+            "grant_type": "refresh_token",
         }
 
         # Make refresh request to Google
         response = requests.post(
             token_url,
             data=refresh_data,
-            headers={"Content-Type": "application/x-www-form-urlencoded"}
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
         )
 
         if response.status_code != 200:
-            logger.error(f"Token refresh failed: {response.status_code} - {response.text}")
-            
+            logger.error(
+                f"Token refresh failed: {response.status_code} - {response.text}"
+            )
+
             # Parse error response if possible
             try:
                 error_data = response.json()
-                error_msg = error_data.get("error_description", error_data.get("error", "Token refresh failed"))
-            except:
+                error_msg = error_data.get(
+                    "error_description", error_data.get("error", "Token refresh failed")
+                )
+            except (json.JSONDecodeError, KeyError):
                 error_msg = f"Token refresh failed with status {response.status_code}"
-            
+
             return create_error_response(400, error_msg)
 
         # Parse successful response
         token_data = response.json()
-        
+
         # Calculate expiry information
         expires_in = token_data.get("expires_in", 3600)  # Default 1 hour
         expires_at = datetime.datetime.now() + datetime.timedelta(seconds=expires_in)
@@ -92,7 +95,7 @@ def lambda_handler(event, context):
             "expires_in": expires_in,
             "expires_at": expires_timestamp,
             "token_type": token_data.get("token_type", "Bearer"),
-            "scope": token_data.get("scope", "")
+            "scope": token_data.get("scope", ""),
         }
 
         # Include new refresh token if provided (Google sometimes rotates them)

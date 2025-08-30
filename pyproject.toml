@@ -25,3 +25,25 @@ mypy = "^1.5.0"
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.mypy]
+python_version = "3.9"
+warn_unused_configs = true
+# Disable warn_return_any for Lambda functions that return API Gateway responses
+
+# Allow missing imports for Lambda runtime packages and shared modules
+[[tool.mypy.overrides]]
+module = [
+    "google_auth_oauthlib.*",
+    "google.auth.*",
+    "googleapiclient.*",
+    "boto3.*",
+    "botocore.*",
+    "requests.*",
+    "shared.*"
+]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+ignore_errors = true

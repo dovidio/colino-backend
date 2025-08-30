@@ -5,7 +5,7 @@ OAuth callback Lambda function for handling Google OAuth authorization code exch
 import os
 import logging
 from google_auth_oauthlib.flow import Flow
-from shared.config import get_oauth_config
+from shared.config import get_oauth_config, SCOPES
 from shared.response_utils import create_response, create_error_response
 
 # Configure logging
@@ -52,7 +52,7 @@ def lambda_handler(event, context):
 
         # Create flow instance
         flow = Flow.from_client_config(
-            oauth_config, scopes=["https://www.googleapis.com/auth/youtube.readonly"]
+            oauth_config, scopes=SCOPES
         )
 
         # Construct redirect URI dynamically from the event
@@ -105,10 +105,6 @@ def lambda_handler(event, context):
                 <h1 class="success">Authentication Successful!</h1>
                 <p>You have successfully authorized the application to access
                    your YouTube data.</p>
-                <div class="token">
-                    <strong>Access Token:</strong><br>
-                    {credentials.token[:20]}...
-                </div>
                 <p>You can now close this window.</p>
             </body>
             </html>

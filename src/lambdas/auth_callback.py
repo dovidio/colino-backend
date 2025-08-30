@@ -97,15 +97,102 @@ def lambda_handler(event, context):
                     body {{ font-family: Arial, sans-serif; text-align: center;
                            margin: 50px; }}
                     .success {{ color: green; }}
-                    .token {{ background: #f0f0f0; padding: 10px; margin: 20px;
-                             word-break: break-all; }}
+                    .token-container {{ background: #f8f9fa; padding: 20px; margin: 20px auto;
+                                       border-radius: 8px; max-width: 600px; }}
+                    .token {{ background: #e9ecef; padding: 15px; margin: 10px 0;
+                             word-break: break-all; font-family: monospace;
+                             border-radius: 4px; }}
+                    .copy-btn {{ background: #007bff; color: white; border: none;
+                                padding: 10px 20px; margin: 5px; border-radius: 4px;
+                                cursor: pointer; font-size: 14px; }}
+                    .copy-btn:hover {{ background: #0056b3; }}
+                    .copy-btn:active {{ background: #004085; }}
+                    .instructions {{ background: #d4edda; padding: 15px; margin: 20px auto;
+                                    border-radius: 8px; max-width: 600px; color: #155724; }}
                 </style>
             </head>
             <body>
                 <h1 class="success">Authentication Successful!</h1>
-                <p>You have successfully authorized the application to access
-                   your YouTube data.</p>
+                <p>You have successfully authorized the application to access your YouTube data.</p>
+                
+                <div class="instructions">
+                    <strong>For CLI users:</strong><br>
+                    1. Click the "Copy Access Token" button below<br>
+                    2. Go back to your terminal<br>
+                    3. Paste the token when prompted
+                </div>
+                
+                <div class="token-container">
+                    <h3>Access Token:</h3>
+                    <div class="token" id="accessToken">{credentials.token}</div>
+                    <button class="copy-btn" onclick="copyToClipboard('accessToken', this)">
+                        Copy Access Token
+                    </button>
+                    
+                    <h3>Refresh Token:</h3>
+                    <div class="token" id="refreshToken">{credentials.refresh_token or 'None'}</div>
+                    <button class="copy-btn" onclick="copyToClipboard('refreshToken', this)">
+                        Copy Refresh Token
+                    </button>
+                    
+                    <br><br>
+                    <button class="copy-btn" onclick="copyBothTokens()" style="background: #28a745;">
+                        Copy Both Tokens (JSON)
+                    </button>
+                </div>
+                
                 <p>You can now close this window.</p>
+                
+                <script>
+                function copyToClipboard(elementId, button) {{
+                    const element = document.getElementById(elementId);
+                    const text = element.textContent;
+                    
+                    navigator.clipboard.writeText(text).then(function() {{
+                        const originalText = button.textContent;
+                        button.textContent = 'Copied!';
+                        button.style.background = '#28a745';
+                        setTimeout(function() {{
+                            button.textContent = originalText;
+                            button.style.background = '#007bff';
+                        }}, 2000);
+                    }}).catch(function(err) {{
+                        // Fallback for older browsers
+                        const textarea = document.createElement('textarea');
+                        textarea.value = text;
+                        document.body.appendChild(textarea);
+                        textarea.select();
+                        document.execCommand('copy');
+                        document.body.removeChild(textarea);
+                        
+                        const originalText = button.textContent;
+                        button.textContent = 'Copied!';
+                        button.style.background = '#28a745';
+                        setTimeout(function() {{
+                            button.textContent = originalText;
+                            button.style.background = '#007bff';
+                        }}, 2000);
+                    }});
+                }}
+                
+                function copyBothTokens() {{
+                    const accessToken = document.getElementById('accessToken').textContent;
+                    const refreshToken = document.getElementById('refreshToken').textContent;
+                    const json = JSON.stringify({{
+                        access_token: accessToken,
+                        refresh_token: refreshToken === 'None' ? null : refreshToken
+                    }}, null, 2);
+                    
+                    navigator.clipboard.writeText(json).then(function() {{
+                        const button = event.target;
+                        const originalText = button.textContent;
+                        button.textContent = 'Copied JSON!';
+                        setTimeout(function() {{
+                            button.textContent = originalText;
+                        }}, 2000);
+                    }});
+                }}
+                </script>
             </body>
             </html>
             """

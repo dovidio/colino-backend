@@ -3,8 +3,8 @@ Tests for the authentication Lambda functions.
 """
 
 import json
-import sys
 import os
+import sys
 from unittest.mock import Mock, patch
 
 # Add src directory to Python path
@@ -12,11 +12,11 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 # Mock boto3 before importing modules that use it
 with patch("boto3.resource"):
-    from lambdas.auth_initiate import (  # noqa: E402
-        lambda_handler as auth_initiate_handler,
-    )
     from lambdas.auth_callback import (  # noqa: E402
         lambda_handler as auth_callback_handler,
+    )
+    from lambdas.auth_initiate import (  # noqa: E402
+        lambda_handler as auth_initiate_handler,
     )
 
 

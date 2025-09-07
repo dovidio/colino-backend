@@ -20,7 +20,7 @@ The backend is designed to be stateless and secure, using DynamoDB only for temp
 
 ### Prerequisites
 
-- Python 3.9+
+- Python 3.13+
 - Poetry
 - AWS CLI configured
 - Google Cloud Console project with YouTube API enabled
@@ -32,29 +32,16 @@ The backend is designed to be stateless and secure, using DynamoDB only for temp
 make install
 ```
 
-## 🔄 CI/CD Pipeline
-
-This project includes a complete CI/CD pipeline using GitHub Actions for automated testing and deployment.
-
-## Development
-
 ### Running Tests
 
 ```bash
 poetry run pytest
 ```
 
-### Code Formatting
+### Code Formatting & type checking
 
 ```bash
-poetry run black src/
-poetry run flake8 src/
-```
-
-### Type Checking
-
-```bash
-poetry run mypy src/
+make lint
 ```
 
 ## License

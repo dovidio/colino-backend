@@ -3,7 +3,8 @@ Test cases for the OAuth token refresh Lambda function.
 """
 
 import json
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
 from src.lambdas.auth_refresh import lambda_handler
 
 

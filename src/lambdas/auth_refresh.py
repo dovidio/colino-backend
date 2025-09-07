@@ -2,12 +2,14 @@
 OAuth token refresh Lambda function for refreshing Google OAuth access tokens.
 """
 
-import logging
-import json
 import datetime
+import json
+import logging
+
 import requests
+
 from shared.config import get_oauth_config
-from shared.response_utils import create_response, create_error_response
+from shared.response_utils import create_error_response, create_response
 
 # Configure logging
 logger = logging.getLogger()

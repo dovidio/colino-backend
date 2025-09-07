@@ -5,7 +5,7 @@ on:
     branches: [ main, develop ]
 
 env:
-  PYTHON_VERSION: '3.9'
+  PYTHON_VERSION: '3.13'
 
 jobs:
   changes:
@@ -63,11 +63,10 @@ jobs:
     - name: Install dependencies
       run: poetry install
     
-    - name: Check code formatting
-      run: poetry run black --check src/ tests/ cli.py
-    
-    - name: Run linting
-      run: poetry run flake8 src/ tests/ --max-line-length=88 --extend-ignore=E203,W503
+    - name: Run linting and formatting checks
+      run: |
+        poetry run ruff check src/ tests/
+        poetry run ruff format --check src/ tests/
     
     - name: Run type checking
       run: poetry run mypy src/ --ignore-missing-imports

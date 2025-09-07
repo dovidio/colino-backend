@@ -38,10 +38,26 @@ make install
 poetry run pytest
 ```
 
-### Code Formatting & type checking
+### Code Formatting & Linting
 
 ```bash
-make lint
+make lint        # Run linting and type checking
+make lint-fix    # Auto-fix linting issues
+make format      # Format code
+```
+
+## 🔒 Security
+
+This project includes automated security monitoring:
+
+- **Dependabot**: Automatically creates PRs for dependency updates and security patches
+- **Security Workflow**: Weekly security scans using Bandit and Safety
+- **Dependency Review**: Reviews new dependencies in PRs for known vulnerabilities
+
+### Running Security Scans Locally
+
+```bash
+make ci-security
 ```
 
 ## License

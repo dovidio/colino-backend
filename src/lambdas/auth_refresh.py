@@ -63,6 +63,7 @@ def lambda_handler(event, context):
         response = requests.post(
             token_url,
             data=refresh_data,
+            timeout=10,
             headers={"Content-Type": "application/x-www-form-urlencoded"},
         )
 

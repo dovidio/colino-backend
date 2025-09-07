@@ -3,12 +3,14 @@ OAuth callback Lambda function for handling Google OAuth authorization code
 exchange.
 """
 
-import logging
 import datetime
+import logging
 import uuid
-from typing import Dict, Any
+from typing import Any
+
 from google_auth_oauthlib.flow import Flow  # type: ignore
-from shared.config import get_oauth_config, SCOPES
+
+from shared.config import SCOPES, get_oauth_config
 from shared.response_utils import create_error_response
 from shared.token_storage import save_oauth_tokens
 
@@ -17,7 +19,7 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 
 
-def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """
     Handle OAuth callback from Google.
 

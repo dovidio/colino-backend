@@ -2,11 +2,12 @@
 DynamoDB utilities for storing and retrieving OAuth tokens.
 """
 
-import os
-import boto3  # type: ignore
-import time
 import logging
-from typing import Dict, Any, Optional
+import os
+import time
+from typing import Any, Optional
+
+import boto3  # type: ignore
 
 logger = logging.getLogger()
 
@@ -31,7 +32,7 @@ def get_oauth_sessions_table():
 
 
 def save_oauth_tokens(
-    session_id: str, tokens: Dict[str, Any], expires_in: int = 600
+    session_id: str, tokens: dict[str, Any], expires_in: int = 600
 ) -> bool:
     """
     Save OAuth tokens to DynamoDB.
@@ -79,7 +80,7 @@ def save_oauth_tokens(
         return False
 
 
-def get_oauth_tokens(session_id: str) -> Optional[Dict[str, Any]]:
+def get_oauth_tokens(session_id: str) -> Optional[dict[str, Any]]:
     """
     Retrieve OAuth tokens from DynamoDB.
 

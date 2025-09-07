@@ -3,8 +3,8 @@ Tests for the auth_poll Lambda function.
 """
 
 import json
-import sys
 import os
+import sys
 from unittest.mock import Mock, patch
 
 # Add src directory to Python path

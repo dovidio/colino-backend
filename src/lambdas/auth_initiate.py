@@ -6,7 +6,7 @@ This function generates the authorization URL that users need to visit.
 import os
 import sys
 import uuid
-from typing import Dict, Any
+from typing import Any
 
 from google_auth_oauthlib.flow import Flow  # type: ignore
 
@@ -18,7 +18,7 @@ from shared.response_utils import create_response  # noqa: E402
 from shared.token_storage import save_oauth_tokens  # noqa: E402
 
 
-def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
+def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """
     Lambda handler to initiate Google OAuth flow.
 

@@ -4,7 +4,7 @@ version = 0.1
 [default.global]
 [default.global.parameters]
 stack_name = "colino-backend"
-s3_bucket = ""  # Set via environment variable SAM_S3_BUCKET
+s3_bucket = "colino-backend-sam-1756565947"
 s3_prefix = "colino-backend"
 region = "us-east-1"
 capabilities = "CAPABILITY_IAM"

@@ -5,7 +5,7 @@ Description: 'YouTube OAuth Proxy Lambda Functions'
 Globals:
   Function:
     Timeout: 30
-    Runtime: python3.9
+    Runtime: python3.13
     Environment:
       Variables:
         GOOGLE_CLIENT_ID: !Ref GoogleClientId

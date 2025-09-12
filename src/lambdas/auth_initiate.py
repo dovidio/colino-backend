@@ -37,8 +37,13 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         if not host:
             raise ValueError("Unable to determine API Gateway host")
 
-        # Construct the callback URL
-        redirect_uri = f"https://{host}/Prod/callback"
+        # Construct the callback URL - check if using custom domain
+        if host.endswith('.amazonaws.com'):
+            # Using API Gateway URL, include stage
+            redirect_uri = f"https://{host}/Prod/callback"
+        else:
+            # Using custom domain, no stage prefix needed
+            redirect_uri = f"https://{host}/callback"
 
         # Generate a unique session ID
         session_id = str(uuid.uuid4())

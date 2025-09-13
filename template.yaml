@@ -17,6 +17,10 @@ Globals:
       AllowMethods: "'GET,POST,OPTIONS'"
       AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
       AllowOrigin: "'*'"
+    Domain:
+      DomainName: !Ref CustomDomainName
+      CertificateArn: 'arn:aws:acm:us-east-1:408278014159:certificate/81b8f7d5-b4a3-4073-888c-2b0cfccdbfc4'
+      EndpointConfiguration: EDGE
 
 Parameters:
   GoogleClientId:
@@ -33,6 +37,16 @@ Parameters:
     Type: String
     Default: 'http://localhost:3000'
     Description: Comma-separated list of allowed CORS origins
+  
+  Stage:
+    Type: String
+    Default: 'Prod'
+    Description: Stage name for the API
+    
+  CustomDomainName:
+    Type: String
+    Default: 'colino.umberto.xyz'
+    Description: Custom domain name for the API
 
 Resources:
   # DynamoDB table for OAuth sessions - encrypted and short-lived
@@ -143,19 +157,31 @@ Resources:
 Outputs:
   AuthInitiateApi:
     Description: "API Gateway endpoint URL for OAuth initiation"
-    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/auth/initiate"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/${Stage}/auth/initiate"
   
   AuthCallbackApi:
     Description: "API Gateway endpoint URL for OAuth callback"
-    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/callback"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/${Stage}/callback"
     
   AuthPollApi:
     Description: "API Gateway endpoint URL for token polling"
-    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/auth/poll"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/${Stage}/auth/poll"
     
   AuthRefreshApi:
     Description: "API Gateway endpoint URL for token refresh"
-    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/auth/refresh"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/${Stage}/auth/refresh"
+  
+  CustomDomainUrl:
+    Description: "Custom domain URL"
+    Value: !Sub "https://${CustomDomainName}/"
+    
+  CustomDomainAuthInitiate:
+    Description: "Custom domain OAuth initiation endpoint"
+    Value: !Sub "https://${CustomDomainName}/auth/initiate"
+    
+  CustomDomainAuthCallback:
+    Description: "Custom domain OAuth callback endpoint"
+    Value: !Sub "https://${CustomDomainName}/callback"
   
   OAuthSessionsTableName:
     Description: "DynamoDB table name for OAuth sessions"

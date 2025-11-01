@@ -8,7 +8,7 @@ packages = [{include = "src"}]
 
 [tool.poetry.dependencies]
 python = "^3.13"
-google-auth = "^2.23.0"
+google-auth = "^2.42.1"
 google-auth-oauthlib = "^1.1.0"
 google-auth-httplib2 = "^0.2.0"
 google-api-python-client = "^2.100.0"

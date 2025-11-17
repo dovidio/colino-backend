@@ -29,6 +29,12 @@ validate-template: ## Validate SAM template
 build: ## Build SAM application
 	sam build --template template.yaml
 
+deploy-prod: build ## Deploy to production with custom domain
+	sam deploy \
+		--parameter-overrides \
+			Stage=Prod \
+			CustomDomainName=colino.umberto.xyz
+
 deploy: ## Deploy to AWS (uses deploy.sh script)
 	./deploy.sh
 

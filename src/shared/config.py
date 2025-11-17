@@ -18,7 +18,6 @@ GOOGLE_CLIENT_CONFIG = {
 # YouTube API scopes
 SCOPES = [
     "https://www.googleapis.com/auth/youtube.readonly",
-    "https://www.googleapis.com/auth/youtube.force-ssl",
 ]
 
 # CORS configuration

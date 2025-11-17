@@ -66,8 +66,13 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         if not host:
             return create_error_response(500, "Unable to determine API Gateway host")
 
-        # Construct the callback URL
-        redirect_uri = f"https://{host}/Prod/callback"
+        # Construct the callback URL - check if using custom domain
+        if host.endswith('.amazonaws.com'):
+            # Using API Gateway URL, include stage
+            redirect_uri = f"https://{host}/Prod/callback"
+        else:
+            # Using custom domain, no stage prefix needed
+            redirect_uri = f"https://{host}/callback"
         flow.redirect_uri = redirect_uri
 
         # Exchange authorization code for tokens
@@ -118,106 +123,81 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         logger.info(f"Successfully processed OAuth callback for session {session_id}")
 
         # Return HTML page with instructions to keep CLI running
-        html_content = f"""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>Authentication Complete</title>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <style>
-                body {{
-                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI',
-                                 Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-                    text-align: center;
-                    margin: 0;
-                    padding: 50px 20px;
-                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                    color: white;
-                    min-height: 100vh;
-                    display: flex;
-                    flex-direction: column;
-                    justify-content: center;
-                    align-items: center;
-                }}
-                .container {{
-                    background: rgba(255, 255, 255, 0.95);
-                    color: #333;
-                    padding: 40px;
-                    border-radius: 16px;
-                    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
-                    max-width: 600px;
-                    width: 100%;
-                }}
-                .success-icon {{
-                    font-size: 64px;
-                    margin-bottom: 20px;
-                    color: #28a745;
-                }}
-                h1 {{
-                    color: #28a745;
-                    margin-bottom: 20px;
-                    font-size: 28px;
-                }}
-                p {{
-                    font-size: 18px;
-                    line-height: 1.6;
-                    margin-bottom: 20px;
-                    color: #666;
-                }}
-                .important-instruction {{
-                    background: #fff3cd;
-                    padding: 20px;
-                    border-radius: 8px;
-                    border-left: 4px solid #ffc107;
-                    margin: 20px 0;
-                    color: #856404;
-                }}
-                .close-instruction {{
-                    background: #f8f9fa;
-                    padding: 20px;
-                    border-radius: 8px;
-                    border-left: 4px solid #28a745;
-                    margin-top: 20px;
-                }}
-                .session-info {{
-                    background: #e9ecef;
-                    padding: 15px;
-                    border-radius: 8px;
-                    font-family: monospace;
-                    margin: 15px 0;
-                    word-break: break-all;
-                }}
-            </style>
-        </head>
-        <body>
-            <div class="container">
-                <div class="success-icon">✅</div>
-                <h1>Authentication Successful!</h1>
-                <p>
-                    Your OAuth authentication has been completed successfully
-                    and your tokens have been securely stored.
-                </p>
+        html_content = """
+    <!doctype html>
+    <html lang="en">
+    <head>
+      <meta charset="utf-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1" />
+      <title>Authentication Successful • Colino</title>
+      <style>
+        html, body { height: 100%; }
+        body {
+          margin: 0;
+          font-family: Roboto, Helvetica;
+          background: #313131;
+          display: grid;
+          place-items: center;
+        }
+        .card {
+          text-align: center;
+        }
+        .logos {
+          display: grid;
+          place-items: center;
+          margin-bottom: 24px;
+          gap: 16px;
+        }
+        .logos .colino {
+          display: inline-grid;
+          place-items: center;
+          width: 256px; height: 256px;
+        }
 
-                <div class="important-instruction">
-                    <strong>⚠️ Important:</strong> Please make sure your CLI
-                    command is still running in the terminal before closing
-                    this browser window. The CLI needs a few seconds to
-                    retrieve your authentication tokens.
-                </div>
+        h1 {
+          font-size: 2rem;
+          margin: 12px 0;
+          line-height: 1.2;
+          color: #ffffff;
+        }
+        p.subtitle {
+          font-size: 1.125rem;
+          color: #d6d6d6;
+        }
+        .success {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          background: rgba(34, 197, 94, 0.1);
+          border: 2px solid rgba(34, 197, 94, 0.1);
+          color: #22c55e;
+          padding: 12px 14px;
+          border-radius: 999px;
+          font-weight: 600;
+          margin: 16px 0 8px;
+        }
+      </style>
+    </head>
+    <body>
+      <main class="card" role="main" aria-labelledby="title">
+        <div class="logos" aria-label="Colino logo">
+            <img class="colino" src="https://colinoassets.s3.us-east-1.amazonaws.com/filtering.png" alt="Colino" />
+        </div>
 
-                <div class="session-info">Session ID: {session_id}</div>
+        <div class="success" aria-live="polite">
+         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10Z" stroke="currentColor" stroke-width="2"/>
+            <path d="M8 12.5l2.5 2.5L16 9.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          Authentication successful
+        </div>
 
-                <div class="close-instruction">
-                    <strong>
-                        After your CLI confirms successful authentication,
-                        you can safely close this browser window.
-                    </strong>
-                </div>
-            </div>
-        </body>
-        </html>
-        """
+        <h1 id="title">You're all set.</h1>
+        <p class="subtitle">You can now close this tab and use <strong>Colino</strong> in your terminal.</p>
+      </main>
+    </body>
+    </html>
+       """
 
         return {
             "statusCode": 200,

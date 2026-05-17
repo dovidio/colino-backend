@@ -68,16 +68,12 @@ def lambda_handler(event, context):
         )
 
         if response.status_code != 200:
-            logger.error(
-                f"Token refresh failed: {response.status_code} - {response.text}"
-            )
+            logger.error(f"Token refresh failed: {response.status_code} - {response.text}")
 
             # Parse error response if possible
             try:
                 error_data = response.json()
-                error_msg = error_data.get(
-                    "error_description", error_data.get("error", "Token refresh failed")
-                )
+                error_msg = error_data.get("error_description", error_data.get("error", "Token refresh failed"))
             except (json.JSONDecodeError, KeyError):
                 error_msg = f"Token refresh failed with status {response.status_code}"
 

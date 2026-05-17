@@ -44,10 +44,7 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
                 202,
                 {
                     "status": "pending",
-                    "message": (
-                        "Authentication in progress. Please complete the "
-                        "OAuth flow in your browser."
-                    ),
+                    "message": ("Authentication in progress. Please complete the OAuth flow in your browser."),
                 },
             )
 
@@ -70,10 +67,7 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
                 202,
                 {
                     "status": "pending",
-                    "message": (
-                        "Authentication in progress. Please complete the "
-                        "OAuth flow in your browser."
-                    ),
+                    "message": ("Authentication in progress. Please complete the OAuth flow in your browser."),
                 },
             )
 

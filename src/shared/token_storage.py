@@ -31,9 +31,7 @@ def get_oauth_sessions_table():
     return get_dynamodb_resource().Table(table_name)
 
 
-def save_oauth_tokens(
-    session_id: str, tokens: dict[str, Any], expires_in: int = 600
-) -> bool:
+def save_oauth_tokens(session_id: str, tokens: dict[str, Any], expires_in: int = 600) -> bool:
     """
     Save OAuth tokens to DynamoDB.
 

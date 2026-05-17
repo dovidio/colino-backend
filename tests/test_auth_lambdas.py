@@ -139,9 +139,7 @@ class TestAuthCallback:
     def test_auth_callback_oauth_error(self):
         """Test callback with OAuth error."""
         # Test event with OAuth error
-        event = {
-            "queryStringParameters": {"error": "access_denied", "state": "state123"}
-        }
+        event = {"queryStringParameters": {"error": "access_denied", "state": "state123"}}
         context = Mock()
 
         # Call handler

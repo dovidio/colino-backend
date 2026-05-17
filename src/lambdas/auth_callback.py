@@ -67,7 +67,7 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             return create_error_response(500, "Unable to determine API Gateway host")
 
         # Construct the callback URL - check if using custom domain
-        if host.endswith('.amazonaws.com'):
+        if host.endswith(".amazonaws.com"):
             # Using API Gateway URL, include stage
             redirect_uri = f"https://{host}/Prod/callback"
         else:
@@ -90,15 +90,11 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             expires_at = credentials.expiry
             expires_timestamp = int(expires_at.timestamp())
             # Calculate seconds until expiry
-            expires_in = int(
-                (expires_at - datetime.datetime.now(expires_at.tzinfo)).total_seconds()
-            )
+            expires_in = int((expires_at - datetime.datetime.now(expires_at.tzinfo)).total_seconds())
         else:
             # Fallback to Google's default if expiry not provided
             expires_in = 3600  # 1 hour in seconds
-            expires_at = datetime.datetime.now() + datetime.timedelta(
-                seconds=expires_in
-            )
+            expires_at = datetime.datetime.now() + datetime.timedelta(seconds=expires_in)
             expires_timestamp = int(expires_at.timestamp())
 
         # Prepare token data for storage

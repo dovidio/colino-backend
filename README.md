@@ -60,6 +60,16 @@ This project includes automated security monitoring:
 make ci-security
 ```
 
+### Deploy
+Build lambda
+```bash
+./build-lambda.sh
+```
+
+Deploy lambda
+```bash
+make deploy-prod
+```
 ## License
 
 This project is licensed under the MIT License.

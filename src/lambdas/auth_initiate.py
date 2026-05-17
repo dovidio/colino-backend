@@ -38,7 +38,7 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             raise ValueError("Unable to determine API Gateway host")
 
         # Construct the callback URL - check if using custom domain
-        if host.endswith('.amazonaws.com'):
+        if host.endswith(".amazonaws.com"):
             # Using API Gateway URL, include stage
             redirect_uri = f"https://{host}/Prod/callback"
         else:

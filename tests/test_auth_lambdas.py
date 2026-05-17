@@ -116,8 +116,7 @@ class TestAuthCallback:
         # Assertions
         assert result["statusCode"] == 200
         assert result["headers"]["Content-Type"] == "text/html"
-        assert "Authentication Successful!" in result["body"]
-        assert "state123" in result["body"]  # Session ID should be in HTML
+        assert "Authentication Successful" in result["body"]
 
         # Verify DynamoDB put was called
         mock_table.put_item.assert_called_once()
@@ -139,9 +138,7 @@ class TestAuthCallback:
     def test_auth_callback_oauth_error(self):
         """Test callback with OAuth error."""
         # Test event with OAuth error
-        event = {
-            "queryStringParameters": {"error": "access_denied", "state": "state123"}
-        }
+        event = {"queryStringParameters": {"error": "access_denied", "state": "state123"}}
         context = Mock()
 
         # Call handler

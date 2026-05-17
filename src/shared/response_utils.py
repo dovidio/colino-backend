@@ -8,9 +8,7 @@ from typing import Any, Optional
 from shared.config import ALLOWED_ORIGINS
 
 
-def create_response(
-    status_code: int, body: dict[str, Any], headers: Optional[dict[str, str]] = None
-) -> dict[str, Any]:
+def create_response(status_code: int, body: dict[str, Any], headers: Optional[dict[str, str]] = None) -> dict[str, Any]:
     """
     Create a standardized API Gateway response.
 
@@ -25,9 +23,7 @@ def create_response(
     default_headers = {
         "Content-Type": "application/json",
         "Access-Control-Allow-Origin": "*",  # Configure based on your needs
-        "Access-Control-Allow-Headers": (
-            "Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token"
-        ),
+        "Access-Control-Allow-Headers": ("Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token"),
         "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
     }
 
@@ -53,9 +49,7 @@ def create_cors_headers(origin: Optional[str] = None) -> dict[str, str]:
     """
     if origin and origin in ALLOWED_ORIGINS:
         return {"Access-Control-Allow-Origin": origin}
-    return {
-        "Access-Control-Allow-Origin": ALLOWED_ORIGINS[0] if ALLOWED_ORIGINS else "*"
-    }
+    return {"Access-Control-Allow-Origin": ALLOWED_ORIGINS[0] if ALLOWED_ORIGINS else "*"}
 
 
 def create_error_response(status_code: int, message: str) -> dict[str, Any]:

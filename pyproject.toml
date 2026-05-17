@@ -8,19 +8,20 @@ packages = [{include = "src"}]
 
 [tool.poetry.dependencies]
 python = "^3.13"
-google-auth = "^2.23.0"
-google-auth-oauthlib = "^1.1.0"
-google-auth-httplib2 = "^0.2.0"
+google-auth = "^2.43.0"
+google-auth-oauthlib = "^1.2.3"
+google-auth-httplib2 = "^0.2.1"
 google-api-python-client = "^2.100.0"
-boto3 = "^1.40.25"
+boto3 = "^1.41.2"
 requests = "^2.31.0"
 
 [tool.poetry.group.dev.dependencies]
-pytest = "^8.4.2"
+pytest = "^9.0.1"
 pytest-cov = "^7.0.0"
-mypy = "^1.5.0"
+mypy = "^1.18.2"
 bandit = "^1.8.6"
-safety = "^3.6.1"
+safety = "^3.7.0"
+ruff = "^0.15.13"
 
 [build-system]
 requires = ["poetry-core"]
@@ -50,7 +51,7 @@ ignore_errors = true
 
 [tool.ruff]
 # Same as Black's default line length
-line-length = 88
+line-length = 120
 target-version = "py39"
 
 # Exclude directories

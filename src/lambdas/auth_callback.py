@@ -123,6 +123,7 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         logger.info(f"Successfully processed OAuth callback for session {session_id}")
 
         # Return HTML page with instructions to keep CLI running
+        # ruff: noqa: E501
         html_content = """
     <!doctype html>
     <html lang="en">
@@ -198,7 +199,7 @@ def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     </body>
     </html>
        """
-
+        # ruff: qa: E501
         return {
             "statusCode": 200,
             "headers": {

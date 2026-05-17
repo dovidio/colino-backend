@@ -51,7 +51,7 @@ ignore_errors = true
 
 [tool.ruff]
 # Same as Black's default line length
-line-length = 88
+line-length = 120
 target-version = "py39"
 
 # Exclude directories

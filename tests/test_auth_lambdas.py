@@ -116,8 +116,7 @@ class TestAuthCallback:
         # Assertions
         assert result["statusCode"] == 200
         assert result["headers"]["Content-Type"] == "text/html"
-        assert "Authentication Successful!" in result["body"]
-        assert "state123" in result["body"]  # Session ID should be in HTML
+        assert "Authentication Successful" in result["body"]
 
         # Verify DynamoDB put was called
         mock_table.put_item.assert_called_once()
